@@ -5,7 +5,6 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -36,9 +35,6 @@ if (container) {
 } else {
     document.body.appendChild(renderer.domElement);
 }
-
-// HDRI Environment Setup
-const rgbeLoader = new RGBELoader();
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -153,89 +149,7 @@ scene.add(backLight);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Increased significantly
 scene.add(ambientLight);
 
-// Load HDRI environment map for reflections
-rgbeLoader.load('782-hdri-skies-com.hdr', (texture) => {
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    
-    // Convert to PMREM for better reflections
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const envMap = pmremGenerator.fromEquirectangular(texture);
-    scene.environment = envMap.texture;
-    
-    scene.background = new THREE.Color(0x1a1a1a); // Dark background
-    
-    // Dispose PMREMGenerator to free memory
-    pmremGenerator.dispose();
-    
-    // Force update all materials to use the environment map with sharp reflections
-    scene.traverse((object) => {
-        if (object.isMesh && object.material) {
-            // Update all materials (both array and single)
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            
-            materials.forEach(mat => {
-                // Apply environment map to any material type
-                mat.envMap = scene.environment; // Use HDRI environment
-                mat.envMapIntensity = 1.0; // Normal reflection intensity
-                
-                // If it's a physical material, set sharp reflections
-                if (mat.isMeshPhysicalMaterial) {
-                    mat.roughness = 0.0; // Perfectly smooth for maximum reflections
-                    mat.metalness = 1.0; // Fully metallic
-                    if (mat.clearcoatRoughness !== undefined) {
-                        mat.clearcoatRoughness = 0.005; // Very sharp clearcoat
-                    }
-                    // Update Fresnel if it exists
-                    if (mat.sheen !== undefined) {
-                        mat.sheen = 2.0; // Moderate hologram-like Fresnel
-                        mat.sheenRoughness = 0.3; // Balanced Fresnel effect
-                        mat.sheenColor = new THREE.Color(0xff6600); // Orange
-                        mat.iridescence = 1.0; // Moderate iridescence intensity
-                        mat.iridescenceIOR = 1.3; // Standard refraction
-                        mat.iridescenceThicknessRange = [100, 500]; // Balanced range for rainbow effects
-                    }
-                }
-                
-                mat.needsUpdate = true;
-            });
-        }
-    });
-    
-    
-    // Update stored original materials with HDRI properties
-    porscheModel.traverse((child) => {
-        if (child.isMesh && child.userData.originalMaterial) {
-            // Update the stored original material with current HDRI properties
-            const originalMat = child.userData.originalMaterial;
-            if (originalMat.isMeshPhysicalMaterial) {
-                originalMat.envMap = scene.environment; // Apply HDRI environment
-                originalMat.envMapIntensity = 1.0;
-                originalMat.roughness = 0.0;
-                originalMat.metalness = 1.0;
-                originalMat.clearcoatRoughness = 0.005;
-                originalMat.sheen = 2.0;
-                originalMat.sheenRoughness = 0.3;
-                originalMat.sheenColor = new THREE.Color(0xff6600);
-                originalMat.iridescence = 1.0;
-                originalMat.iridescenceIOR = 1.3;
-                originalMat.iridescenceThicknessRange = [100, 500];
-                originalMat.needsUpdate = true;
-            }
-        }
-    });
-}, undefined, (error) => {
-    // If HDRI fails, create a simple environment for reflections
-    console.log('HDRI not found, creating simple environment');
-    
-    // Create a simple environment using PMREMGenerator
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
-    
-    // Use the current scene as environment
-    const envMap = pmremGenerator.fromScene(scene, 0.04);
-    scene.environment = envMap.texture;
-});
+// No HDRI - keeping it lightweight
 
 // Post-processing with Bloom
 const composer = new EffectComposer(renderer);
@@ -630,6 +544,11 @@ function animate() {
                     currentMesh.material = porscheModel.userData.wireframeMaterial.clone();
                     currentMesh.material.opacity = opacity;
                     currentMesh.material.transparent = true;
+                    
+                    // Log the currently highlighted part
+                    if (cycle.transitionProgress < 0.01) { // Only log at start of transition
+                        console.log('Highlighting part:', currentMesh.name || 'Unnamed part', `(${cycle.currentMeshIndex + 1}/${meshCount})`);
+                    }
                     
                     // Ensure Fresnel and HDRI are never disabled
                     if (currentMesh.material.isMeshPhysicalMaterial) {
