@@ -164,6 +164,97 @@ const bloomPass = new UnrealBloomPass(
 );
 composer.addPass(bloomPass);
 
+// Fisheye effect using Giliam de Carpentier's lens distortion shader
+const fisheyeShader = {
+    uniforms: {
+        "tDiffuse": { value: null },
+        "strength": { value: 0.3 },
+        "height": { value: 1.0 },
+        "aspectRatio": { value: 1.0 },
+        "cylindricalRatio": { value: 1.0 }
+    },
+    vertexShader: `
+        uniform float strength;
+        uniform float height;
+        uniform float aspectRatio;
+        uniform float cylindricalRatio;
+        
+        varying vec3 vUV;
+        varying vec2 vUVDot;
+        
+        void main() {
+            gl_Position = projectionMatrix * (modelViewMatrix * vec4(position, 1.0));
+            
+            float scaledHeight = strength * height;
+            float cylAspectRatio = aspectRatio * cylindricalRatio;
+            float aspectDiagSq = aspectRatio * aspectRatio + 1.0;
+            float diagSq = scaledHeight * scaledHeight * aspectDiagSq;
+            vec2 signedUV = (2.0 * uv + vec2(-1.0, -1.0));
+            
+            float z = 0.5 * sqrt(diagSq + 1.0) + 0.5;
+            float ny = (z - 1.0) / (cylAspectRatio * cylAspectRatio + 1.0);
+            
+            vUVDot = sqrt(ny) * vec2(cylAspectRatio, 1.0) * signedUV;
+            vUV = vec3(0.5, 0.5, 1.0) * z + vec3(-0.5, -0.5, 0.0);
+            vUV.xy += uv;
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        varying vec3 vUV;
+        varying vec2 vUVDot;
+        
+        void main() {
+            vec3 uv = dot(vUVDot, vUVDot) * vec3(-0.5, -0.5, -1.0) + vUV;
+            gl_FragColor = texture2DProj(tDiffuse, uv);
+        }
+    `
+};
+
+const fisheyePass = new ShaderPass(fisheyeShader);
+const horizontalFOV = 60; // Subtle wide-angle
+const strength = 0.165; // Increased by 10% from 0.15
+const cylindricalRatio = 1.0;
+const height = Math.tan(THREE.MathUtils.degToRad(horizontalFOV) / 2) / camera.aspect;
+
+fisheyePass.uniforms.strength.value = strength;
+fisheyePass.uniforms.height.value = height;
+fisheyePass.uniforms.aspectRatio.value = camera.aspect;
+fisheyePass.uniforms.cylindricalRatio.value = cylindricalRatio;
+
+composer.addPass(fisheyePass);
+
+// RGB Split effect
+const rgbSplitShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        amount: { value: 0.003 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float amount;
+        varying vec2 vUv;
+        
+        void main() {
+            vec2 offset = amount * vec2(1.0, 0.0);
+            float r = texture2D(tDiffuse, vUv + offset).r;
+            float g = texture2D(tDiffuse, vUv).g;
+            float b = texture2D(tDiffuse, vUv - offset).b;
+            gl_FragColor = vec4(r, g, b, 1.0);
+        }
+    `
+};
+
+const rgbSplitPass = new ShaderPass(rgbSplitShader);
+composer.addPass(rgbSplitPass);
+
 // Vignette effect
 const vignetteShader = {
     uniforms: {
@@ -198,6 +289,142 @@ const vignetteShader = {
 const vignettePass = new ShaderPass(vignetteShader);
 composer.addPass(vignettePass);
 
+// Bad TV Shader (by Felix Turner - subtle version)
+const badTVShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        time: { value: 0 },
+        distortion: { value: 1.5 },  // Increased for visibility
+        distortion2: { value: 2.0 },  // Increased for visibility
+        speed: { value: 0.1 },       // Increased for visibility
+        rollSpeed: { value: 0.05 }  // Increased for visibility
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float time;
+        uniform float distortion;
+        uniform float distortion2;
+        uniform float speed;
+        uniform float rollSpeed;
+        varying vec2 vUv;
+        
+        // Ashima 2D Simplex Noise
+        vec3 mod289(vec3 x) {
+            return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+        
+        vec2 mod289(vec2 x) {
+            return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+        
+        vec3 permute(vec3 x) {
+            return mod289(((x*34.0)+1.0)*x);
+        }
+        
+        float snoise(vec2 v) {
+            const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+            vec2 i = floor(v + dot(v, C.yy));
+            vec2 x0 = v - i + dot(i, C.xx);
+            
+            vec2 i1;
+            i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+            vec4 x12 = x0.xyxy + C.xxzz;
+            x12.xy -= i1;
+            
+            i = mod289(i);
+            vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+            
+            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+            m = m*m;
+            m = m*m;
+            
+            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+            vec3 h = abs(x) - 0.5;
+            vec3 ox = floor(x + 0.5);
+            vec3 a0 = x - ox;
+            
+            m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+            
+            vec3 g;
+            g.x = a0.x * x0.x + h.x * x0.y;
+            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+            return 130.0 * dot(m, g);
+        }
+        
+        void main() {
+            vec2 p = vUv;
+            float ty = time * speed;
+            float yt = p.y - ty;
+            
+            // Smooth distortion
+            float offset = snoise(vec2(yt * 3.0, 0.0)) * 0.2;
+            
+            // Boost distortion
+            offset = offset * distortion * offset * distortion * offset;
+            
+            // Add fine grain distortion
+            offset += snoise(vec2(yt * 50.0, 0.0)) * distortion2 * 0.001;
+            
+            // Combine distortion on X with roll on Y
+            gl_FragColor = texture2D(tDiffuse, vec2(fract(p.x + offset), fract(p.y - time * rollSpeed)));
+        }
+    `
+};
+
+// const badTVPass = new ShaderPass(badTVShader);
+// let badTVTime = 0;
+// composer.addPass(badTVPass);
+
+// Film grain effect - very subtle dark grain
+const grainShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        time: { value: 0 },
+        amount: { value: 0.075 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float time;
+        uniform float amount;
+        varying vec2 vUv;
+        
+        float random(vec2 st) {
+            return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+        }
+        
+        void main() {
+            vec4 color = texture2D(tDiffuse, vUv);
+            
+            // Generate random grain
+            float grain = random(vUv * vec2(200.0, 200.0) + time);
+            
+            // Overlay blending mode - only affects blacks and doesn't gray
+            float grainValue = (grain - 0.5) * amount;
+            
+            // Apply dark grain with overlay-like behavior
+            gl_FragColor = color - vec4(grainValue * 0.5);
+        }
+    `
+};
+
+const grainPass = new ShaderPass(grainShader);
+let grainTime = 0;
+composer.addPass(grainPass);
+
 // Mouse position for shader inputs
 let mouseX = 0;
 let mouseY = 0;
@@ -206,6 +433,27 @@ let mouseY = 0;
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let hoveredMesh = null;
+let hoverFadeProgress = 0;
+
+// Text decoding animation
+let currentText = '';
+let targetText = '';
+let textDecodeIndex = 0;
+let textDecodeSpeed = 3; // characters per frame
+
+// Sound effects - preload audio
+const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
+hoverSound.volume = 0.3;
+hoverSound.preload = 'auto';
+hoverSound.crossOrigin = 'anonymous';
+
+// Add click handler to enable audio (required by browsers)
+document.addEventListener('click', () => {
+    hoverSound.play().then(() => {
+        hoverSound.pause();
+        hoverSound.currentTime = 0;
+    }).catch(e => console.log('Initial audio test:', e));
+}, { once: true });
 
 function onMouseMove(event) {
     // Normalize mouse coordinates to -1 to 1 range for shader inputs
@@ -262,6 +510,96 @@ function onMouseMove(event) {
                 if (hoveredMesh.isMesh && hoveredMesh.material) {
                     hoveredMesh.userData.originalMaterial = hoveredMesh.material.clone();
                     
+                    // Play hover sound
+                    hoverSound.currentTime = 0;
+                    hoverSound.play().catch(e => console.log('Sound playback failed:', e));
+                    
+                    // Start decoder animation for part name
+                    const partContainerEl = document.getElementById('part-container');
+                    const partNameEl = document.getElementById('part-name');
+                    if (partNameEl) {
+                        targetText = hoveredMesh.name || 'Car Part';
+                        currentText = '';
+                        textDecodeIndex = 0;
+                    }
+                    
+                    // Show container
+                    if (partContainerEl) {
+                        partContainerEl.classList.add('visible');
+                    }
+                    
+                    // Display detailed part information
+                    const partInfoEl = document.getElementById('part-info');
+                    if (partInfoEl) {
+                        const info = [];
+                        info.push(`─────────────────────────────────────────`);
+                        info.push(`  POSITION:`);
+                        info.push(`    x: ${hoveredMesh.position.x.toFixed(2)}`);
+                        info.push(`    y: ${hoveredMesh.position.y.toFixed(2)}`);
+                        info.push(`    z: ${hoveredMesh.position.z.toFixed(2)}`);
+                        info.push(``);
+                        info.push(`  ROTATION:`);
+                        info.push(`    x: ${hoveredMesh.rotation.x.toFixed(2)}`);
+                        info.push(`    y: ${hoveredMesh.rotation.y.toFixed(2)}`);
+                        info.push(`    z: ${hoveredMesh.rotation.z.toFixed(2)}`);
+                        info.push(``);
+                        info.push(`  SCALE:`);
+                        info.push(`    x: ${hoveredMesh.scale.x.toFixed(2)}`);
+                        info.push(`    y: ${hoveredMesh.scale.y.toFixed(2)}`);
+                        info.push(`    z: ${hoveredMesh.scale.z.toFixed(2)}`);
+                        
+                        if (hoveredMesh.geometry) {
+                            const geometry = hoveredMesh.geometry;
+                            info.push(`─────────────────────────────────────────`);
+                            info.push(`  GEOMETRY TYPE:`);
+                            info.push(`    ${geometry.type}`);
+                            
+                            if (geometry.attributes && geometry.attributes.position) {
+                                const vertexCount = geometry.attributes.position.count;
+                                const faces = geometry.index ? geometry.index.count / 3 : vertexCount / 3;
+                                info.push(``);
+                                info.push(`  VERTICES: ${vertexCount}`);
+                                info.push(`  FACES: ${faces.toFixed(0)}`);
+                            }
+                            
+                            if (geometry.boundingBox) {
+                                const width = (geometry.boundingBox.max.x - geometry.boundingBox.min.x).toFixed(2);
+                                const height = (geometry.boundingBox.max.y - geometry.boundingBox.min.y).toFixed(2);
+                                const depth = (geometry.boundingBox.max.z - geometry.boundingBox.min.z).toFixed(2);
+                                info.push(``);
+                                info.push(`  BOUNDING BOX:`);
+                                info.push(`    w: ${width}`);
+                                info.push(`    h: ${height}`);
+                                info.push(`    d: ${depth}`);
+                            }
+                        }
+                        
+                        if (hoveredMesh.material) {
+                            info.push(`─────────────────────────────────────────`);
+                            info.push(`  MATERIAL: ${hoveredMesh.material.type}`);
+                        }
+                        
+                        info.push(`─────────────────────────────────────────`);
+                        info.push(`  UUID: ${hoveredMesh.uuid.substring(0, 8)}...`);
+                        info.push(`─────────────────────────────────────────`);
+                        
+                        // Clear previous content
+                        partInfoEl.innerHTML = '';
+                        
+                        // Create each line as a separate element with staggered delay
+                        const totalLines = info.length;
+                        const maxDuration = 0.5; // Max total duration
+                        const delayPerLine = maxDuration / totalLines;
+                        
+                        info.forEach((line, index) => {
+                            const lineEl = document.createElement('div');
+                            lineEl.className = 'info-line';
+                            lineEl.textContent = line;
+                            lineEl.style.animationDelay = `${index * delayPerLine}s`;
+                            partInfoEl.appendChild(lineEl);
+                        });
+                    }
+                    
                     const wireframeMat = new THREE.MeshStandardMaterial({
                         color: 0xff6600,
                         wireframe: true,
@@ -272,18 +610,32 @@ function onMouseMove(event) {
                     hoveredMesh.material = wireframeMat;
                 }
             }
-        } else {
-            // Mouse not over anything - restore previous hovered mesh
-            if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
+    } else {
+        // Mouse not over anything - restore immediately
+        if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
+            // Restore original material immediately
+            if (hoveredMesh.material) {
                 hoveredMesh.material.dispose();
-                hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
-                
-                // Material now has correct HDRI properties stored
-                
-                hoveredMesh.userData.originalMaterial = null;
             }
-            hoveredMesh = null;
+            const originalMat = hoveredMesh.userData.originalMaterial.clone();
+            hoveredMesh.material = originalMat;
+            hoveredMesh.userData.originalMaterial = null;
         }
+        
+        // Reset decoder state
+        targetText = '';
+        currentText = '';
+        textDecodeIndex = 0;
+        
+        // Hide part container
+        const partContainerEl = document.getElementById('part-container');
+        if (partContainerEl) {
+            partContainerEl.classList.remove('visible');
+        }
+        
+        hoveredMesh = null;
+        hoverFadeProgress = 0;
+    }
     }
 }
 
@@ -523,6 +875,35 @@ loader.load(
 function animate() {
     requestAnimationFrame(animate);
     
+    // Update Bad TV shader time (disabled)
+    // badTVTime += 0.01;
+    // badTVPass.uniforms.time.value = badTVTime;
+    
+    // Update grain time
+    grainTime += 0.01;
+    grainPass.uniforms.time.value = grainTime;
+    
+    // Update text decoder animation
+    if (targetText.length > 0) {
+        if (textDecodeIndex < targetText.length) {
+            textDecodeIndex += textDecodeSpeed;
+        }
+        const len = Math.min(Math.floor(textDecodeIndex), targetText.length);
+        currentText = targetText.substring(0, len);
+        
+        const partNameEl = document.getElementById('part-name');
+        if (partNameEl) {
+            partNameEl.textContent = currentText;
+        }
+    }
+    
+    // Flicker effect on all text
+    const flickerOpacity = 0.75 + Math.random() * 0.25; // Between 0.75 and 1.0
+    const partContainerEl = document.getElementById('part-container');
+    if (partContainerEl) {
+        partContainerEl.style.opacity = flickerOpacity;
+    }
+    
     // Update controls
     controls.update();
     
@@ -530,8 +911,10 @@ function animate() {
     if (porscheModel) {
         porscheModel.rotation.y += 0.005;
         
-        // Update wireframe cycle with smooth transitions
-        if (porscheModel.userData.wireframeCycle) {
+        // No fade effects - instant on/off handled in onMouseMove
+        
+        // Update wireframe cycle with smooth transitions - DISABLED
+        if (false && porscheModel.userData.wireframeCycle) {
             const cycle = porscheModel.userData.wireframeCycle;
             const meshCount = cycle.allMeshes.length;
             
@@ -621,6 +1004,10 @@ animate();
 
 // Handle window resize
 window.addEventListener('resize', () => {
+    if (fisheyePass) {
+        fisheyePass.uniforms.aspectRatio.value = window.innerWidth / window.innerHeight;
+    }
+    
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
