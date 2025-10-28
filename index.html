@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Mono:wght@100&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -107,22 +108,32 @@
         }
         
         #tooltip-content {
-            background: rgba(0, 0, 0, 0.8); /* Same darkening effect as overlay */
+            background: rgba(0, 0, 0, 0.7); /* 10% lower opacity (0.8 → 0.7) */
             color: #ffd700; /* Yellow text */
             font-family: 'Space Mono', 'Courier New', monospace;
             font-size: 14px;
             font-weight: 100;
             padding: 8px 12px;
             white-space: nowrap;
+            border-radius: 8px; /* Small rounded corners */
             text-shadow: 
                 0 0 5px rgba(255, 140, 0, 0.5),
                 0 0 10px rgba(255, 140, 0, 0.3);
         }
         
         #tooltip-part-name {
-            font-weight: 400;
+            font-weight: 700; /* Bold */
             margin-bottom: 2px;
-            font-size: 14px; /* Same size as tooltip content */
+            font-size: 16px; /* Increased from 14px */
+            color: #ffd700; /* Default yellow */
+        }
+        
+        #tooltip-part-name.warning {
+            color: #ff4444; /* Red for warnings */
+        }
+        
+        #tooltip-part-name.good {
+            color: #44ff44; /* Green for good status */
         }
         
         #tooltip-status {
@@ -141,6 +152,80 @@
         /* Hard blink effect for status line */
         #tooltip-status.blinking {
             animation: hardBlink 0.1s infinite; /* 10Hz = 1/10 = 0.1s */
+        }
+        
+        /* Tooltip icon styling */
+        #tooltip-icon {
+            width: 36px;
+            height: 36px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #tooltip-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: #ffd700; /* Default yellow */
+            stroke-width: 2;
+            fill: none;
+        }
+        
+        #tooltip-icon.warning svg {
+            stroke: #ff4444; /* Red for warnings */
+        }
+        
+        #tooltip-icon.good svg {
+            stroke: #44ff44; /* Green for good status */
+        }
+        
+        /* Hard blink effect for icon */
+        #tooltip-icon.blinking {
+            animation: hardBlink 0.1s infinite; /* 10Hz = 1/10 = 0.1s */
+        }
+        
+        /* Music player styling */
+        #music-player {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        #music-player:hover {
+            background: transparent;
+            transform: scale(1.1);
+        }
+        
+        #music-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #music-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: #ffd700; /* Default yellow (not playing) */
+            stroke-width: 2;
+            fill: none;
+            transition: stroke 0.3s ease;
+        }
+        
+        #music-player.playing #music-icon svg {
+            stroke: #44ff44; /* Green when playing */
         }
         
         @keyframes hardBlink {
@@ -168,13 +253,13 @@
         
         #part-container {
             position: fixed;
-            top: 50%;
+            top: 0;
             left: 0;
             padding: 50px;
             opacity: 0;
             z-index: 10; /* ensure overlay above canvas for backdrop-filter */
             isolation: isolate; /* create new stacking context for backdrop-filter */
-            transform: translateY(-50%) scale(0.84); /* 5% larger than 0.8 */
+            transform: scale(0.84); /* 5% larger than 0.8 */
             transform-origin: top left;
         }
         
@@ -189,9 +274,9 @@
         }
         
         #part-name {
-            font-size: 29px; /* 20% smaller than 36px */
-            font-weight: 100;
-            color: #ffd700;
+            font-size: 35px; /* Increased from 29px to match tooltip scaling */
+            font-weight: 700; /* Bold instead of 100 */
+            color: #ffd700; /* Default yellow */
             text-shadow: 
                 0 0 10px rgba(255, 140, 0, 0.5),
                 0 0 20px rgba(255, 140, 0, 0.3),
@@ -202,6 +287,22 @@
             letter-spacing: 2px;
             font-family: 'Space Mono', 'Courier New', monospace;
             margin-bottom: 20px;
+        }
+        
+        #part-name.warning {
+            color: #ff4444; /* Red for warnings */
+            text-shadow: 
+                0 0 10px rgba(255, 68, 68, 0.5),
+                0 0 20px rgba(255, 68, 68, 0.3),
+                0 0 30px rgba(255, 68, 68, 0.2);
+        }
+        
+        #part-name.good {
+            color: #44ff44; /* Green for good status */
+            text-shadow: 
+                0 0 10px rgba(68, 255, 68, 0.5),
+                0 0 20px rgba(68, 255, 68, 0.3),
+                0 0 30px rgba(68, 255, 68, 0.2);
         }
         
         #part-info {
@@ -217,8 +318,8 @@
             overflow-y: auto;
             white-space: pre-wrap;
             position: relative;
-            background: rgba(0, 0, 0, 0.55);
-            border-radius: 0;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px; /* Small rounded corners */
             padding: 16px;
         }
 
@@ -250,7 +351,11 @@
         <div id="tooltip-content">
             <div id="tooltip-part-name"></div>
             <div id="tooltip-status"></div>
+            <div id="tooltip-icon"></div>
         </div>
+    </div>
+    <div id="music-player">
+        <div id="music-icon"></div>
     </div>
     <script type="importmap">
     {

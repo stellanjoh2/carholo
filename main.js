@@ -10,6 +10,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a1a);
 
+// Custom height-based ground fog will be added as post-processing effect
+
 const camera = new THREE.PerspectiveCamera(
     50,
     window.innerWidth / window.innerHeight,
@@ -425,6 +427,9 @@ const grainPass = new ShaderPass(grainShader);
 let grainTime = 0;
 composer.addPass(grainPass);
 
+// Simple ground fog using standard Three.js fog (more reliable)
+scene.fog = new THREE.FogExp2(0xff6600, 0.08); // Orange fog with lower density
+
 // Panel background blur (shader-based, only under the info panel rect)
 const panelBlurShader = {
     uniforms: {
@@ -552,6 +557,87 @@ let tooltipTypewriterSpeed = 2; // characters per frame
 // Sound effects - preload audio
 const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
 hoverSound.volume = 0.3;
+
+// Ambient music
+const ambientMusic = new Audio('calm-cyberpunk-ambient.mp3');
+ambientMusic.volume = 0.4;
+ambientMusic.loop = true;
+ambientMusic.preload = 'auto';
+ambientMusic.crossOrigin = 'anonymous';
+
+// Music player state
+let isMusicPlaying = false;
+
+// Music player functionality
+function initializeMusicPlayer() {
+    const musicPlayer = document.getElementById('music-player');
+    const musicIcon = document.getElementById('music-icon');
+    
+    if (!musicPlayer || !musicIcon) {
+        console.error('Music player elements not found');
+        return;
+    }
+    
+    // Set initial play icon (yellow)
+    musicIcon.innerHTML = '<i data-feather="play"></i>';
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Add click handler
+    musicPlayer.addEventListener('click', () => {
+        if (isMusicPlaying) {
+            // Pause music
+            ambientMusic.pause();
+            isMusicPlaying = false;
+            musicPlayer.classList.remove('playing');
+            
+            // Change to play icon (yellow)
+            musicIcon.innerHTML = '<i data-feather="play"></i>';
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            console.log('Music paused');
+        } else {
+            // Play music
+            ambientMusic.play().then(() => {
+                isMusicPlaying = true;
+                musicPlayer.classList.add('playing');
+                
+                // Change to pause icon (green)
+                musicIcon.innerHTML = '<i data-feather="pause"></i>';
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+                
+                console.log('Music started');
+            }).catch(e => {
+                console.error('Failed to play music:', e);
+            });
+        }
+    });
+    
+    console.log('Music player initialized');
+}
+
+// Utility function to capitalize first letter
+function capitalizeFirstLetter(string) {
+    if (!string) return string;
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// Icon mapping function for status types
+function getStatusIcon(statusText) {
+    if (statusText.includes('Maintenance') || statusText.includes('Warning')) {
+        return 'alert-triangle'; // Warning icon
+    } else if (statusText.includes('Operational') || statusText.includes('Excellent') || 
+               statusText.includes('Good Condition') || statusText.includes('Optimal')) {
+        return 'check-circle'; // Success icon
+    } else {
+        return 'help-circle'; // Neutral/inspection icon
+    }
+}
 hoverSound.preload = 'auto';
 hoverSound.crossOrigin = 'anonymous';
 
@@ -640,10 +726,15 @@ function onMouseMove(event) {
                     tooltipTargetText = '';
                     tooltipTypewriterIndex = 0;
                     
-                    // Remove blinking class
+                    // Remove blinking class from status and icon
                     const tooltipStatus = document.getElementById('tooltip-status');
+                    const tooltipIcon = document.getElementById('tooltip-icon');
                     if (tooltipStatus) {
                         tooltipStatus.classList.remove('blinking');
+                    }
+                    if (tooltipIcon) {
+                        tooltipIcon.classList.remove('blinking', 'warning', 'good');
+                        tooltipIcon.innerHTML = ''; // Clear icon
                     }
                 }
                 
@@ -651,6 +742,12 @@ function onMouseMove(event) {
                 const partContainerEl = document.getElementById('part-container');
                 if (partContainerEl) {
                     partContainerEl.classList.remove('visible');
+                }
+                
+                // Clear part name color classes
+                const partNameEl = document.getElementById('part-name');
+                if (partNameEl) {
+                    partNameEl.classList.remove('warning', 'good');
                 }
                 
                 hoveredMesh = null;
@@ -703,15 +800,25 @@ function onMouseMove(event) {
                     const tooltip = document.getElementById('tooltip');
                     const tooltipPartName = document.getElementById('tooltip-part-name');
                     const tooltipStatus = document.getElementById('tooltip-status');
+                    const tooltipIcon = document.getElementById('tooltip-icon');
                     
-                    if (tooltip && tooltipPartName && tooltipStatus) {
+                    if (tooltip && tooltipPartName && tooltipStatus && tooltipIcon) {
                         tooltip.classList.add('visible');
                         
                         // Start typewriter effect for part name
-                        tooltipTargetText = currentHovered.name || 'Unknown Part';
+                        tooltipTargetText = capitalizeFirstLetter(currentHovered.name || 'Unknown Part');
                         tooltipCurrentText = '';
                         tooltipTypewriterIndex = 0;
                         tooltipTypewriterActive = true;
+                        
+                        // Apply color class to tooltip part name based on status
+                        tooltipPartName.classList.remove('warning', 'good');
+                        if (randomStatus.includes('Maintenance') || randomStatus.includes('Warning')) {
+                            tooltipPartName.classList.add('warning');
+                        } else if (randomStatus.includes('Operational') || randomStatus.includes('Excellent') || 
+                                   randomStatus.includes('Good Condition') || randomStatus.includes('Optimal')) {
+                            tooltipPartName.classList.add('good');
+                        }
                         
                         // Set status text and add appropriate class
                         tooltipStatus.textContent = randomStatus;
@@ -719,6 +826,27 @@ function onMouseMove(event) {
                         
                         // Add blinking class for hard blink effect
                         tooltipStatus.classList.add('blinking');
+                        
+                        // Set icon based on status
+                        const iconName = getStatusIcon(randomStatus);
+                        tooltipIcon.innerHTML = `<i data-feather="${iconName}"></i>`;
+                        tooltipIcon.classList.remove('warning', 'good', 'blinking'); // Clear previous classes
+                        
+                        // Add appropriate color class to icon
+                        if (randomStatus.includes('Maintenance') || randomStatus.includes('Warning')) {
+                            tooltipIcon.classList.add('warning');
+                        } else if (randomStatus.includes('Operational') || randomStatus.includes('Excellent') || 
+                                   randomStatus.includes('Good Condition') || randomStatus.includes('Optimal')) {
+                            tooltipIcon.classList.add('good');
+                        }
+                        
+                        // Add blinking class to icon
+                        tooltipIcon.classList.add('blinking');
+                        
+                        // Initialize Feather icons
+                        if (typeof feather !== 'undefined') {
+                            feather.replace();
+                        }
                         
                         // Update cursor color based on status
                         const crossEl = document.getElementById('cursor-cross');
@@ -787,6 +915,10 @@ function onMouseMove(event) {
                         targetText = 'Porsche 911'; // Source model name as headline
                         currentText = '';
                         textDecodeIndex = 0;
+                        
+                        // Main mesh name (Porsche 911) should always be yellow neutral
+                        partNameEl.classList.remove('warning', 'good');
+                        // No color class added - stays default yellow
                     }
                     
                     // Show container
@@ -800,7 +932,7 @@ function onMouseMove(event) {
                         const info = [];
                         info.push(`─────────────────────────────────────────`);
                         info.push(`  PART NAME:`);
-                        info.push(`    ${hoveredMesh.name || 'Unnamed Part'}`);
+                        info.push(`    ${capitalizeFirstLetter(hoveredMesh.name || 'Unnamed Part')}`);
                         info.push(`─────────────────────────────────────────`);
                         info.push(`  POSITION:`);
                         info.push(`    x: ${hoveredMesh.position.x.toFixed(2)}`);
@@ -1020,10 +1152,15 @@ function onMouseMove(event) {
             tooltipTargetText = '';
             tooltipTypewriterIndex = 0;
             
-            // Remove blinking class
+            // Remove blinking class from status and icon
             const tooltipStatus = document.getElementById('tooltip-status');
+            const tooltipIcon = document.getElementById('tooltip-icon');
             if (tooltipStatus) {
                 tooltipStatus.classList.remove('blinking');
+            }
+            if (tooltipIcon) {
+                tooltipIcon.classList.remove('blinking', 'warning', 'good');
+                tooltipIcon.innerHTML = ''; // Clear icon
             }
         }
         
@@ -1067,6 +1204,12 @@ function onMouseMove(event) {
         const partContainerEl = document.getElementById('part-container');
         if (partContainerEl) {
             partContainerEl.classList.remove('visible');
+        }
+        
+        // Clear part name color classes
+        const partNameEl = document.getElementById('part-name');
+        if (partNameEl) {
+            partNameEl.classList.remove('warning', 'good');
         }
         
         hoveredMesh = null;
@@ -1317,21 +1460,28 @@ loader.load(
         object.userData.wireframeCycle = wireframeCycleData;
         object.userData.wireframeMaterial = wireframeMaterial;
 
-    // Ambient dust particle field
-    const particleCount = 100;
+    // Enhanced ambient dust particle field
+    const particleCount = 120; // 20% more particles (100 → 120)
     const particleGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3); // Store velocities for movement
     const ranges = new THREE.Vector3(5, 3, 5); // scatter volume around car
 
     for (let i = 0; i < particleCount; i++) {
         positions[i * 3 + 0] = (Math.random() * 2 - 1) * ranges.x;
         positions[i * 3 + 1] = (Math.random() * 2 - 1) * ranges.y + 0.5;
         positions[i * 3 + 2] = (Math.random() * 2 - 1) * ranges.z;
+        
+        // Add subtle random velocities for ambient movement
+        velocities[i * 3 + 0] = (Math.random() - 0.5) * 0.02; // X velocity
+        velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.01; // Y velocity (slower)
+        velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02; // Z velocity
     }
     particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
 
     const particleMaterial = new THREE.PointsMaterial({
-        color: 0xffd700, // neon yellow
+        color: 0xffd700, // Default neon yellow
         size: 0.03,
         sizeAttenuation: true,
         transparent: true,
@@ -1340,6 +1490,11 @@ loader.load(
 
     const particles = new THREE.Points(particleGeometry, particleMaterial);
     particles.name = 'ambientDust';
+    particles.userData = {
+        originalPositions: positions.slice(), // Store original positions
+        velocities: velocities,
+        currentColor: 0xffd700 // Track current color
+    };
     scene.add(particles);
 
     // Ghost point cloud duplicate of the car
@@ -1436,6 +1591,69 @@ function animate() {
     grainTime += 0.01;
     grainPass.uniforms.time.value = grainTime;
 
+    // Update particle system with ambient movement and color syncing
+    const particles = scene.getObjectByName('ambientDust');
+    if (particles && particles.geometry) {
+        const positions = particles.geometry.attributes.position.array;
+        const velocities = particles.userData.velocities;
+        const originalPositions = particles.userData.originalPositions;
+        
+        // Update particle positions with ambient movement
+        for (let i = 0; i < positions.length; i += 3) {
+            const particleIndex = i / 3;
+            
+            // Apply velocity to position
+            positions[i] += velocities[i];     // X
+            positions[i + 1] += velocities[i + 1]; // Y
+            positions[i + 2] += velocities[i + 2]; // Z
+            
+            // Keep particles within bounds (soft boundary)
+            const maxDistance = 6; // Slightly larger than original range
+            const distance = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+            
+            if (distance > maxDistance) {
+                // Reset to original position if too far
+                positions[i] = originalPositions[i];
+                positions[i + 1] = originalPositions[i + 1];
+                positions[i + 2] = originalPositions[i + 2];
+            }
+        }
+        
+        particles.geometry.attributes.position.needsUpdate = true;
+        
+        // Sync particle color with hovered object health status
+        let targetColor = 0xffd700; // Default yellow
+        
+        if (hoveredMesh) {
+            // Get the health status for the currently hovered mesh
+            const partId = hoveredMesh.uuid;
+            const hash = partId.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0);
+            const statusCategory = Math.abs(hash) % 3;
+            
+            if (statusCategory === 0) {
+                // Good status - green particles
+                targetColor = 0x44ff44;
+            } else if (statusCategory === 1) {
+                // Warning status - red particles
+                targetColor = 0xff4444;
+            } else {
+                // Neutral status - yellow particles
+                targetColor = 0xffd700;
+            }
+        }
+        
+        // Smooth color transition
+        const currentColor = particles.userData.currentColor;
+        const colorDiff = targetColor - currentColor;
+        if (Math.abs(colorDiff) > 0.1) {
+            particles.userData.currentColor += colorDiff * 0.05; // Smooth transition
+            particles.material.color.setHex(particles.userData.currentColor);
+        }
+    }
+
     // Floor light color synced to hovered object health (static, no blinking)
     if (warningMesh && warningMesh.material) {
         // Determine light color based on hovered object health
@@ -1522,13 +1740,12 @@ function animate() {
         }
     }
     
-    // Flicker effect on all text
-    // Text flicker effect - only when visible
-    const partContainerEl = document.getElementById('part-container');
-    if (partContainerEl && partContainerEl.classList.contains('visible')) {
-        const flickerOpacity = 0.75 + Math.random() * 0.25; // Between 0.75 and 1.0
-        partContainerEl.style.opacity = flickerOpacity;
-    }
+    // Flicker effect disabled - keeping text stable
+    // const partContainerEl = document.getElementById('part-container');
+    // if (partContainerEl && partContainerEl.classList.contains('visible')) {
+    //     const flickerOpacity = 0.75 + Math.random() * 0.25; // Between 0.75 and 1.0
+    //     partContainerEl.style.opacity = flickerOpacity;
+    // }
     
     // Update controls
     controls.update();
@@ -1628,6 +1845,9 @@ function animate() {
     
     composer.render();
 }
+
+// Initialize music player
+initializeMusicPlayer();
 
 animate();
 
