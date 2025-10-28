@@ -45,6 +45,8 @@
             opacity: 0;
             z-index: 10; /* ensure overlay above canvas for backdrop-filter */
             isolation: isolate; /* create new stacking context for backdrop-filter */
+            transform: scale(0.5);
+            transform-origin: top left;
         }
         
         #part-container.visible {
@@ -52,7 +54,7 @@
         }
         
         #part-name {
-            font-size: 36px;
+            font-size: 18px; /* 50% smaller */
             font-weight: 100;
             color: #ffd700;
             text-shadow: 
@@ -68,7 +70,7 @@
         }
         
         #part-info {
-            font-size: 18px;
+            font-size: 9px; /* 50% smaller */
             color: #ffd700;
             font-family: 'Space Mono', 'Courier New', monospace;
             font-weight: 100;
