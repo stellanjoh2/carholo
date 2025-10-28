@@ -425,6 +425,100 @@ const grainPass = new ShaderPass(grainShader);
 let grainTime = 0;
 composer.addPass(grainPass);
 
+// Panel background blur (shader-based, only under the info panel rect)
+const panelBlurShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        rectUV: { value: new THREE.Vector4(0, 0, 0, 0) }, // x0, y0, x1, y1 in 0..1 (GL UV space)
+        blurSize: { value: 12.0 } // pixels
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main(){
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform vec2 resolution;
+        uniform vec4 rectUV; // x0,y0,x1,y1
+        uniform float blurSize;
+        varying vec2 vUv;
+
+        bool inRect(vec2 uv, vec4 r){
+            return uv.x >= r.x && uv.x <= r.z && uv.y >= r.y && uv.y <= r.w;
+        }
+
+        void main(){
+            vec4 base = texture2D(tDiffuse, vUv);
+            if (!inRect(vUv, rectUV)){
+                gl_FragColor = base;
+                return;
+            }
+            // Higher quality approximate Gaussian blur (32 taps)
+            vec2 px = blurSize / resolution;
+            vec4 c = vec4(0.0);
+            float w0 = 0.140; // center
+            float w1 = 0.110; // 1 px offsets
+            float w2 = 0.075; // 1 px diagonals
+            float w3 = 0.060; // 2 px offsets
+            float w4 = 0.040; // 2 px diagonals
+            float w5 = 0.025; // 3 px offsets
+            float w6 = 0.015; // 3 px diagonals
+            
+            // center
+            c += texture2D(tDiffuse, vUv) * w0;
+            
+            // 1 px cross
+            c += texture2D(tDiffuse, vUv + vec2( px.x, 0.0)) * w1;
+            c += texture2D(tDiffuse, vUv + vec2(-px.x, 0.0)) * w1;
+            c += texture2D(tDiffuse, vUv + vec2(0.0 ,  px.y)) * w1;
+            c += texture2D(tDiffuse, vUv + vec2(0.0 , -px.y)) * w1;
+            
+            // 1 px diagonals
+            c += texture2D(tDiffuse, vUv + vec2( px.x,  px.y)) * w2;
+            c += texture2D(tDiffuse, vUv + vec2(-px.x,  px.y)) * w2;
+            c += texture2D(tDiffuse, vUv + vec2( px.x, -px.y)) * w2;
+            c += texture2D(tDiffuse, vUv + vec2(-px.x, -px.y)) * w2;
+            
+            // 2 px cross
+            c += texture2D(tDiffuse, vUv + vec2( 2.0*px.x, 0.0)) * w3;
+            c += texture2D(tDiffuse, vUv + vec2(-2.0*px.x, 0.0)) * w3;
+            c += texture2D(tDiffuse, vUv + vec2(0.0 ,  2.0*px.y)) * w3;
+            c += texture2D(tDiffuse, vUv + vec2(0.0 , -2.0*px.y)) * w3;
+            
+            // 2 px diagonals
+            c += texture2D(tDiffuse, vUv + vec2( 2.0*px.x,  2.0*px.y)) * w4;
+            c += texture2D(tDiffuse, vUv + vec2(-2.0*px.x,  2.0*px.y)) * w4;
+            c += texture2D(tDiffuse, vUv + vec2( 2.0*px.x, -2.0*px.y)) * w4;
+            c += texture2D(tDiffuse, vUv + vec2(-2.0*px.x, -2.0*px.y)) * w4;
+
+            // 3 px cross
+            c += texture2D(tDiffuse, vUv + vec2( 3.0*px.x, 0.0)) * w5;
+            c += texture2D(tDiffuse, vUv + vec2(-3.0*px.x, 0.0)) * w5;
+            c += texture2D(tDiffuse, vUv + vec2(0.0 ,  3.0*px.y)) * w5;
+            c += texture2D(tDiffuse, vUv + vec2(0.0 , -3.0*px.y)) * w5;
+
+            // 3 px diagonals
+            c += texture2D(tDiffuse, vUv + vec2( 3.0*px.x,  3.0*px.y)) * w6;
+            c += texture2D(tDiffuse, vUv + vec2(-3.0*px.x,  3.0*px.y)) * w6;
+            c += texture2D(tDiffuse, vUv + vec2( 3.0*px.x, -3.0*px.y)) * w6;
+            c += texture2D(tDiffuse, vUv + vec2(-3.0*px.x, -3.0*px.y)) * w6;
+            
+            gl_FragColor = c;
+        }
+    `
+};
+
+const enablePanelBlur = false;
+let panelBlurPass = null;
+if (enablePanelBlur) {
+    panelBlurPass = new ShaderPass(panelBlurShader);
+    composer.addPass(panelBlurPass);
+}
+
 // Mouse position for shader inputs
 let mouseX = 0;
 let mouseY = 0;
@@ -436,6 +530,11 @@ let hoveredMesh = null;
 let hoverFadeProgress = 0;
 let boundingBoxHelper = null;
 let cornerIndicators = [];
+let screenOutline = null;
+let enableScreenOutline = false; // feature toggle
+let warningMesh = null;
+let warningOriginalEmissive = null;
+let warningOriginalEmissiveIntensity = 0;
 
 // Text decoding animation
 let currentText = '';
@@ -722,6 +821,38 @@ function onMouseMove(event) {
                             hoveredMesh.add(cross);
                             cornerIndicators.push(cross);
                         });
+
+                        // 2D screen-facing outline disabled (feature toggle)
+                        if (enableScreenOutline) {
+                            const min = bbox.min.clone();
+                            const max = bbox.max.clone();
+                            const size = new THREE.Vector3().subVectors(max, min);
+                            const worldCenter = hoveredMesh.localToWorld(bbox.getCenter(new THREE.Vector3()));
+                            const boxWidthWorld = size.x;
+                            const boxHeightWorld = size.y;
+                            if (screenOutline) {
+                                scene.remove(screenOutline);
+                                screenOutline.geometry.dispose();
+                                screenOutline.material.dispose();
+                                screenOutline = null;
+                            }
+                            const outlineGeom = new THREE.BufferGeometry();
+                            const hw = boxWidthWorld * 0.5;
+                            const hh = boxHeightWorld * 0.5;
+                            const outlinePoints = new Float32Array([
+                                -hw, -hh, 0,
+                                 hw, -hh, 0,
+                                 hw,  hh, 0,
+                                -hw,  hh, 0,
+                                -hw, -hh, 0
+                            ]);
+                            outlineGeom.setAttribute('position', new THREE.BufferAttribute(outlinePoints, 3));
+                            const outlineMat = new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.9 });
+                            screenOutline = new THREE.Line(outlineGeom, outlineMat);
+                            screenOutline.position.copy(worldCenter);
+                            screenOutline.quaternion.copy(camera.quaternion);
+                            scene.add(screenOutline);
+                        }
                     }
                 }
             }
@@ -741,6 +872,12 @@ function onMouseMove(event) {
         if (boundingBoxHelper && boundingBoxHelper.parent) {
             boundingBoxHelper.parent.remove(boundingBoxHelper);
             boundingBoxHelper = null;
+        }
+        if (screenOutline) {
+            scene.remove(screenOutline);
+            screenOutline.geometry.dispose();
+            screenOutline.material.dispose();
+            screenOutline = null;
         }
         
         // Remove corner indicators
@@ -991,6 +1128,105 @@ loader.load(
         // Store cycle data for access in animation loop
         object.userData.wireframeCycle = wireframeCycleData;
         object.userData.wireframeMaterial = wireframeMaterial;
+
+    // Ambient dust particle field
+    const particleCount = 100;
+    const particleGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const ranges = new THREE.Vector3(5, 3, 5); // scatter volume around car
+
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3 + 0] = (Math.random() * 2 - 1) * ranges.x;
+        positions[i * 3 + 1] = (Math.random() * 2 - 1) * ranges.y + 0.5;
+        positions[i * 3 + 2] = (Math.random() * 2 - 1) * ranges.z;
+    }
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const particleMaterial = new THREE.PointsMaterial({
+        color: 0xffd700, // neon yellow
+        size: 0.03,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.9
+    });
+
+    const particles = new THREE.Points(particleGeometry, particleMaterial);
+    particles.name = 'ambientDust';
+    scene.add(particles);
+
+    // Ghost point cloud duplicate of the car
+    const ghostGroup = new THREE.Group();
+    ghostGroup.name = 'ghostPointCloud';
+    const ghostMaterial = new THREE.PointsMaterial({
+        color: 0xffd700, // neon yellow
+        size: 0.01,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+    object.traverse((child) => {
+        if (child.isMesh && child.geometry) {
+            const geom = child.geometry;
+            // Ensure we have positions and downsample by 50%
+            if (geom.attributes && geom.attributes.position) {
+                const pos = geom.attributes.position;
+                const count = pos.count;
+                const stride = 4; // take every 4th vertex (~75% reduction total)
+                const newCount = Math.max(1, Math.floor(count / stride));
+                const sampled = new Float32Array(newCount * 3);
+                let w = 0;
+                for (let i = 0; i < count && w < newCount; i += stride) {
+                    sampled[w * 3 + 0] = pos.getX(i);
+                    sampled[w * 3 + 1] = pos.getY(i);
+                    sampled[w * 3 + 2] = pos.getZ(i);
+                    w++;
+                }
+                const ghostGeom = new THREE.BufferGeometry();
+                ghostGeom.setAttribute('position', new THREE.BufferAttribute(sampled, 3));
+                const points = new THREE.Points(ghostGeom, ghostMaterial.clone());
+                points.position.copy(child.position);
+                points.rotation.copy(child.rotation);
+                points.scale.copy(child.scale);
+                points.matrix.copy(child.matrix);
+                points.matrixAutoUpdate = false;
+                points.frustumCulled = true;
+                ghostGroup.add(points);
+            }
+        }
+    });
+    // Attach to the same parent as the model so it follows all transforms
+    object.add(ghostGroup);
+
+    // Pick a tire-like mesh for warning blink (fallback: first child mesh)
+    let candidate = null;
+    object.traverse((child) => {
+        if (child.isMesh) {
+            const lname = (child.name || '').toLowerCase();
+            if (!candidate) candidate = child;
+            if (lname.includes('wheel') || lname.includes('tire') || lname.includes('rim')) {
+                candidate = child;
+            }
+        }
+    });
+    if (candidate && candidate.material) {
+        warningMesh = candidate;
+        // Detach material from any sharing and ensure emissive support
+        let baseMat = candidate.material;
+        if (Array.isArray(baseMat)) baseMat = baseMat[0];
+        if (!baseMat.isMeshStandardMaterial && !baseMat.isMeshPhysicalMaterial) {
+            baseMat = new THREE.MeshStandardMaterial({ color: baseMat.color || new THREE.Color(0x222222) });
+        } else {
+            baseMat = baseMat.clone();
+        }
+        warningOriginalEmissive = baseMat.emissive ? baseMat.emissive.clone() : new THREE.Color(0x000000);
+        warningOriginalEmissiveIntensity = baseMat.emissiveIntensity || 0.0;
+        baseMat.emissive = new THREE.Color(0xff0000); // set to red once; we'll modulate intensity only
+        baseMat.emissiveIntensity = 0.0;
+        warningMesh.material = baseMat;
+        warningMesh.material.needsUpdate = true;
+    }
     },
     (progress) => {
         console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
@@ -1011,7 +1247,27 @@ function animate() {
     // Update grain time
     grainTime += 0.01;
     grainPass.uniforms.time.value = grainTime;
+
+    // Warning blink (red) at 4 Hz
+    if (warningMesh && warningMesh.material) {
+        const blinkHz = 4.0;
+        const on = Math.sin(grainTime * Math.PI * 2.0 * blinkHz) > 0.0;
+        warningMesh.material.emissiveIntensity = on ? 7.5 : 0.0;
+        warningMesh.material.needsUpdate = true;
+    }
     
+    // Update panel blur rect from DOM position
+    const infoEl = document.getElementById('part-info');
+    if (enablePanelBlur && panelBlurPass && infoEl) {
+        const rect = infoEl.getBoundingClientRect();
+        const x0 = rect.left / window.innerWidth;
+        const y0 = 1.0 - (rect.bottom / window.innerHeight); // flip to GL UV
+        const x1 = rect.right / window.innerWidth;
+        const y1 = 1.0 - (rect.top / window.innerHeight);
+        panelBlurPass.uniforms.rectUV.value.set(x0, y0, x1, y1);
+        panelBlurPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+    }
+
     // Update corner indicator blink (16 blinks per second = 32 Hz)
     if (cornerIndicators.length > 0) {
         const blinkSpeed = 32; // 32 Hz = 16 on/off cycles per second
@@ -1055,6 +1311,28 @@ function animate() {
         // No fade effects - instant on/off handled in onMouseMove
         
         // Bounding box now inherits transformation as child of hoveredMesh
+        // Keep the 2D screen outline facing the camera and sized per hovered object
+        if (enableScreenOutline && screenOutline && hoveredMesh) {
+            const bbox = hoveredMesh.geometry && (hoveredMesh.geometry.boundingBox || (hoveredMesh.geometry.computeBoundingBox(), hoveredMesh.geometry.boundingBox));
+            if (bbox) {
+                const size = new THREE.Vector3().subVectors(bbox.max, bbox.min);
+                const worldCenter = hoveredMesh.localToWorld(bbox.getCenter(new THREE.Vector3()));
+                const boxWidthWorld = size.x;
+                const boxHeightWorld = size.y;
+
+                const hw = boxWidthWorld * 0.5;
+                const hh = boxHeightWorld * 0.5;
+                const arr = screenOutline.geometry.attributes.position.array;
+                arr[0] = -hw; arr[1] = -hh; arr[2] = 0;
+                arr[3] =  hw; arr[4] = -hh; arr[5] = 0;
+                arr[6] =  hw; arr[7] =  hh; arr[8] = 0;
+                arr[9] = -hw; arr[10]=  hh; arr[11]= 0;
+                arr[12]= -hw; arr[13]= -hh; arr[14]= 0;
+                screenOutline.geometry.attributes.position.needsUpdate = true;
+                screenOutline.position.copy(worldCenter);
+                screenOutline.quaternion.copy(camera.quaternion);
+            }
+        }
         
         // Update wireframe cycle with smooth transitions - DISABLED
         if (false && porscheModel.userData.wireframeCycle) {
@@ -1155,5 +1433,9 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
+
+    if (enablePanelBlur && panelBlurPass) {
+        panelBlurPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+    }
 });
 
