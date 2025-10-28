@@ -434,6 +434,8 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let hoveredMesh = null;
 let hoverFadeProgress = 0;
+let boundingBoxHelper = null;
+let cornerIndicators = [];
 
 // Text decoding animation
 let currentText = '';
@@ -608,6 +610,119 @@ function onMouseMove(event) {
                     });
                     
                     hoveredMesh.material = wireframeMat;
+                    
+                    // Create bounding box helper that respects rotation
+                    if (boundingBoxHelper) {
+                        boundingBoxHelper.parent.remove(boundingBoxHelper);
+                    }
+                    
+                    // Remove old corner indicators
+                    cornerIndicators.forEach(indicator => {
+                        if (indicator.parent) {
+                            indicator.parent.remove(indicator);
+                        }
+                    });
+                    cornerIndicators = [];
+                    
+                    if (hoveredMesh.geometry) {
+                        // Create a new geometry for the bounding box
+                        hoveredMesh.geometry.computeBoundingBox();
+                        const bbox = hoveredMesh.geometry.boundingBox;
+                        
+                        // Calculate center offset from geometry center
+                        const center = bbox.getCenter(new THREE.Vector3());
+                        
+                        const box = new THREE.BoxGeometry(
+                            bbox.max.x - bbox.min.x,
+                            bbox.max.y - bbox.min.y,
+                            bbox.max.z - bbox.min.z
+                        );
+                        
+                        const edges = new THREE.EdgesGeometry(box);
+                        const boundingBoxWireframe = new THREE.LineSegments(
+                            edges,
+                            new THREE.LineBasicMaterial({ 
+                                color: 0x00ffff, // Cyan
+                                emissive: 0x00ffff,
+                                emissiveIntensity: 7.5
+                            })
+                        );
+                        
+                        // Disable raycasting so it doesn't interfere with hover detection
+                        boundingBoxWireframe.raycast = () => {};
+                        
+                        // Position relative to object's local space
+                        boundingBoxWireframe.position.copy(center);
+                        
+                        // Add as child so it inherits transformations
+                        hoveredMesh.add(boundingBoxWireframe);
+                        boundingBoxHelper = boundingBoxWireframe;
+                        
+                        // Create 3D crosses at the 8 corners of the bounding box
+                        const corners = [
+                            new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
+                            new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.min.z),
+                            new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.min.z),
+                            new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.min.z),
+                            new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.max.z),
+                            new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.max.z),
+                            new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.max.z),
+                            new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z)
+                        ];
+                        
+                        corners.forEach(corner => {
+                            // Create a tiny cross (6 lines pointing in all directions)
+                            const crossSize = 0.125; // 75% closer to bounding box (0.5 * 0.25 = 0.125)
+                            
+                            // Calculate direction vector from center to corner to extend outward
+                            const center = bbox.getCenter(new THREE.Vector3());
+                            const direction = corner.clone().sub(center).normalize();
+                            const offset = direction.multiplyScalar(crossSize); // Extend outward from corner
+                            
+                            // Create 6 lines extending from the offset position in all directions
+                            const centerPoint = corner.clone().add(offset);
+                            const lineLength = crossSize * 0.3; // 2x width (was 0.15)
+                            
+                            const points = [
+                                // Lines pointing in all 6 directions (X, -X, Y, -Y, Z, -Z)
+                                centerPoint.clone(),
+                                centerPoint.clone().add(new THREE.Vector3(lineLength, 0, 0)),
+                                
+                                centerPoint.clone(),
+                                centerPoint.clone().add(new THREE.Vector3(-lineLength, 0, 0)),
+                                
+                                centerPoint.clone(),
+                                centerPoint.clone().add(new THREE.Vector3(0, lineLength, 0)),
+                                
+                                centerPoint.clone(),
+                                centerPoint.clone().add(new THREE.Vector3(0, -lineLength, 0)),
+                                
+                                centerPoint.clone(),
+                                centerPoint.clone().add(new THREE.Vector3(0, 0, lineLength)),
+                                
+                                centerPoint.clone(),
+                                centerPoint.clone().add(new THREE.Vector3(0, 0, -lineLength))
+                            ];
+                            
+                            const crossMaterial = new THREE.LineBasicMaterial({ 
+                                color: 0xffd700, // Yellow to match wireframe
+                                emissive: 0xffd700,
+                                emissiveIntensity: 7.5,
+                                transparent: true,
+                                opacity: 1.0
+                            });
+                            
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const cross = new THREE.LineSegments(geometry, crossMaterial);
+                            
+                            // Position at origin relative to hoveredMesh
+                            cross.position.set(0, 0, 0);
+                            cross.raycast = () => {}; // Disable raycasting
+                            
+                            hoveredMesh.add(cross);
+                            cornerIndicators.push(cross);
+                        });
+                    }
                 }
             }
     } else {
@@ -621,6 +736,20 @@ function onMouseMove(event) {
             hoveredMesh.material = originalMat;
             hoveredMesh.userData.originalMaterial = null;
         }
+        
+        // Remove bounding box helper
+        if (boundingBoxHelper && boundingBoxHelper.parent) {
+            boundingBoxHelper.parent.remove(boundingBoxHelper);
+            boundingBoxHelper = null;
+        }
+        
+        // Remove corner indicators
+        cornerIndicators.forEach(indicator => {
+            if (indicator.parent) {
+                indicator.parent.remove(indicator);
+            }
+        });
+        cornerIndicators = [];
         
         // Reset decoder state
         targetText = '';
@@ -883,6 +1012,18 @@ function animate() {
     grainTime += 0.01;
     grainPass.uniforms.time.value = grainTime;
     
+    // Update corner indicator blink (16 blinks per second = 32 Hz)
+    if (cornerIndicators.length > 0) {
+        const blinkSpeed = 32; // 32 Hz = 16 on/off cycles per second
+        const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
+        cornerIndicators.forEach(indicator => {
+            if (indicator.material) {
+                indicator.material.opacity = opacity;
+                indicator.material.transparent = true;
+            }
+        });
+    }
+    
     // Update text decoder animation
     if (targetText.length > 0) {
         if (textDecodeIndex < targetText.length) {
@@ -912,6 +1053,8 @@ function animate() {
         porscheModel.rotation.y += 0.005;
         
         // No fade effects - instant on/off handled in onMouseMove
+        
+        // Bounding box now inherits transformation as child of hoveredMesh
         
         // Update wireframe cycle with smooth transitions - DISABLED
         if (false && porscheModel.userData.wireframeCycle) {
