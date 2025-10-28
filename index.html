@@ -58,6 +58,11 @@
             background: #ffd700; /* neon yellow */
             transform: translate(-50%, -50%);
         }
+        /* Hovering state turns cross red */
+        #cursor-cross.hovering::before,
+        #cursor-cross.hovering::after {
+            background: #ff0000;
+        }
         /* vertical bar */
         #cursor-cross::before {
             width: 2px;

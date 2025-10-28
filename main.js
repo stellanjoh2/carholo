@@ -569,6 +569,11 @@ function onMouseMove(event) {
     
     if (porscheModel) {
         const intersects = raycaster.intersectObject(porscheModel, true);
+        const crossEl = document.getElementById('cursor-cross');
+        if (crossEl) {
+            if (intersects.length > 0) crossEl.classList.add('hovering');
+            else crossEl.classList.remove('hovering');
+        }
         
         if (intersects.length > 0) {
             const currentHovered = intersects[0].object;
@@ -887,6 +892,10 @@ function onMouseMove(event) {
             }
         });
         cornerIndicators = [];
+
+        // Reset cursor color
+        const crossEl = document.getElementById('cursor-cross');
+        if (crossEl) crossEl.classList.remove('hovering');
         
         // Reset decoder state
         targetText = '';
@@ -1173,7 +1182,7 @@ loader.load(
             if (geom.attributes && geom.attributes.position) {
                 const pos = geom.attributes.position;
                 const count = pos.count;
-                const stride = 4; // take every 4th vertex (~75% reduction total)
+                const stride = 8; // take every 8th vertex (another ~50% reduction from current)
                 const newCount = Math.max(1, Math.floor(count / stride));
                 const sampled = new Float32Array(newCount * 3);
                 let w = 0;
