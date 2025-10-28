@@ -6,9 +6,15 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
+// Debug: Check if Three.js loaded correctly
+console.log('Three.js version:', THREE.REVISION);
+console.log('Three.js loaded successfully');
+
 // Scene setup
+console.log('Creating scene...');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a1a);
+console.log('Scene created with background color:', scene.background);
 
 // Custom height-based ground fog will be added as post-processing effect
 
@@ -20,22 +26,29 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(0, 5, 10);
 
+console.log('Creating renderer...');
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
     preserveDrawingBuffer: true  // Disable CORS restrictions
 });
+console.log('Renderer created:', renderer);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.3; // Much lower to see reflections
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+console.log('Renderer configured, canvas:', renderer.domElement);
 
 // Append canvas to container
+console.log('Looking for canvas container...');
 const container = document.getElementById('canvas-container');
+console.log('Container found:', container);
 if (container) {
     container.appendChild(renderer.domElement);
+    console.log('Canvas appended to container');
 } else {
     document.body.appendChild(renderer.domElement);
+    console.log('Canvas appended to body (fallback)');
 }
 
 // Controls
@@ -428,7 +441,7 @@ let grainTime = 0;
 composer.addPass(grainPass);
 
 // Simple ground fog using standard Three.js fog (more reliable)
-scene.fog = new THREE.FogExp2(0xff6600, 0.08); // Orange fog with lower density
+scene.fog = new THREE.FogExp2(0xff6600, 0.06); // Orange fog with 25% reduced density
 
 // Panel background blur (shader-based, only under the info panel rect)
 const panelBlurShader = {
