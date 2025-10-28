@@ -62,19 +62,21 @@
         #part-info {
             font-size: 18px;
             color: #ffd700;
-            text-shadow: 
-                0 0 5px rgba(255, 140, 0, 0.5),
-                0 0 10px rgba(255, 140, 0, 0.3),
-                0 0 15px rgba(255, 140, 0, 0.2);
             font-family: 'Space Mono', 'Courier New', monospace;
             font-weight: 100;
             line-height: 1.5;
-            pointer-events: none;
+            pointer-events: auto; /* allow scrolling */
             z-index: 1;
             max-width: 40vw;
             max-height: 70vh;
             overflow-y: auto;
             white-space: pre-wrap;
+            /* floating glass panel */
+            background: rgba(0, 0, 0, 0.35);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
         }
         
         #part-info .info-line {
