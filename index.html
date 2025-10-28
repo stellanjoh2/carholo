@@ -44,6 +44,7 @@
             padding: 50px;
             opacity: 0;
             z-index: 10; /* ensure overlay above canvas for backdrop-filter */
+            isolation: isolate; /* create new stacking context for backdrop-filter */
         }
         
         #part-container.visible {
@@ -78,13 +79,23 @@
             max-height: 70vh;
             overflow-y: auto;
             white-space: pre-wrap;
-            /* floating glass panel */
-            background: rgba(0, 0, 0, 0.5);
-            -webkit-backdrop-filter: blur(60px);
-            backdrop-filter: blur(60px);
-            will-change: backdrop-filter;
+            position: relative; /* for pseudo-element */
+            /* floating glass panel via pseudo-element for more reliable backdrop-filter */
+            background: transparent;
             border-radius: 12px;
             padding: 16px;
+        }
+
+        /* Frosted glass background layer */
+        #part-info::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            -webkit-backdrop-filter: blur(60px);
+            backdrop-filter: blur(60px);
+            border-radius: 12px;
+            z-index: -1; /* place behind text */
         }
         
         #part-info .info-line {
