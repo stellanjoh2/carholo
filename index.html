@@ -228,6 +228,49 @@
             stroke: #44ff44; /* Green when playing */
         }
         
+        /* Fullscreen button styling */
+        #fullscreen-button {
+            position: fixed;
+            top: 50px;
+            right: 90px; /* Position next to music player */
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        #fullscreen-button:hover {
+            background: transparent;
+            transform: scale(1.1);
+        }
+        
+        #fullscreen-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #fullscreen-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: #ffd700; /* Default yellow */
+            stroke-width: 2;
+            fill: none;
+            transition: stroke 0.3s ease;
+        }
+        
+        #fullscreen-button:hover #fullscreen-icon svg {
+            stroke: #ffaa00; /* Slightly brighter yellow on hover */
+        }
+        
         @keyframes hardBlink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
@@ -356,6 +399,9 @@
     </div>
     <div id="music-player">
         <div id="music-icon"></div>
+    </div>
+    <div id="fullscreen-button">
+        <div id="fullscreen-icon"></div>
     </div>
     <script type="importmap">
     {

@@ -621,6 +621,82 @@ function initializeMusicPlayer() {
     console.log('Music player initialized');
 }
 
+// Fullscreen functionality
+function initializeFullscreen() {
+    const fullscreenButton = document.getElementById('fullscreen-button');
+    const fullscreenIcon = document.getElementById('fullscreen-icon');
+    
+    if (!fullscreenButton || !fullscreenIcon) {
+        console.error('Fullscreen elements not found');
+        return;
+    }
+    
+    // Set initial fullscreen icon
+    fullscreenIcon.innerHTML = '<i data-feather="maximize"></i>';
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Function to toggle fullscreen
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            // Enter fullscreen
+            document.documentElement.requestFullscreen().then(() => {
+                console.log('Entered fullscreen');
+                // Change icon to minimize (exit fullscreen)
+                fullscreenIcon.innerHTML = '<i data-feather="minimize"></i>';
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }).catch(err => {
+                console.error('Error entering fullscreen:', err);
+            });
+        } else {
+            // Exit fullscreen
+            document.exitFullscreen().then(() => {
+                console.log('Exited fullscreen');
+                // Change icon back to maximize
+                fullscreenIcon.innerHTML = '<i data-feather="maximize"></i>';
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }).catch(err => {
+                console.error('Error exiting fullscreen:', err);
+            });
+        }
+    }
+    
+    // Add click handler
+    fullscreenButton.addEventListener('click', toggleFullscreen);
+    
+    // Add keyboard shortcut (J key)
+    document.addEventListener('keydown', (event) => {
+        if (event.key.toLowerCase() === 'j' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            // Only trigger if not typing in an input field
+            if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
+                event.preventDefault();
+                toggleFullscreen();
+            }
+        }
+    });
+    
+    // Listen for fullscreen changes to update icon
+    document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+            // In fullscreen
+            fullscreenIcon.innerHTML = '<i data-feather="minimize"></i>';
+        } else {
+            // Not in fullscreen
+            fullscreenIcon.innerHTML = '<i data-feather="maximize"></i>';
+        }
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    });
+    
+    console.log('Fullscreen functionality initialized (J key)');
+}
+
 // Utility function to capitalize first letter
 function capitalizeFirstLetter(string) {
     if (!string) return string;
@@ -1848,6 +1924,9 @@ function animate() {
 
 // Initialize music player
 initializeMusicPlayer();
+
+// Initialize fullscreen functionality
+initializeFullscreen();
 
 animate();
 
