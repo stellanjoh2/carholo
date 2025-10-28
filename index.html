@@ -20,11 +20,12 @@
             overflow: hidden;
             font-family: 'Space Mono', 'Courier New', monospace;
             user-select: none; /* Prevent text selection */
+            cursor: none; /* hide default cursor */
         }
         
         canvas {
             display: block;
-            cursor: grab;
+            cursor: none;
         }
         
         canvas:active {
@@ -35,6 +36,37 @@
             position: fixed;
             inset: 0;
             z-index: 0;
+        }
+
+        /* Yellow cross cursor */
+        #cursor-cross {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+        }
+        #cursor-cross::before,
+        #cursor-cross::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            background: #ffd700; /* neon yellow */
+            transform: translate(-50%, -50%);
+        }
+        /* vertical bar */
+        #cursor-cross::before {
+            width: 2px;
+            height: 20px;
+        }
+        /* horizontal bar */
+        #cursor-cross::after {
+            width: 20px;
+            height: 2px;
         }
         
         #part-container {
@@ -110,6 +142,7 @@
         <div id="part-name"></div>
         <div id="part-info"></div>
     </div>
+    <div id="cursor-cross"></div>
     <script type="importmap">
     {
         "imports": {
@@ -120,6 +153,14 @@
     </script>
     <div id="canvas-container"></div>
     <script type="module" src="main.js"></script>
+    <script>
+        // Follow mouse with cross
+        const cross = document.getElementById('cursor-cross');
+        window.addEventListener('mousemove', (e) => {
+            cross.style.left = e.clientX + 'px';
+            cross.style.top = e.clientY + 'px';
+        });
+    </script>
 </body>
 </html>
 
