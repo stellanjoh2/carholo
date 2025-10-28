@@ -592,6 +592,72 @@ function onMouseMove(event) {
         if (intersects.length > 0) {
             const currentHovered = intersects[0].object;
             
+            // Skip hover detection for ground/plateau mesh
+            if (currentHovered.name && currentHovered.name.toLowerCase().includes('plateau')) {
+                // Treat as if nothing is hovered
+                if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
+                    // Restore previous hovered mesh immediately
+                    if (hoveredMesh.material) {
+                        hoveredMesh.material.dispose();
+                    }
+                    const originalMat = hoveredMesh.userData.originalMaterial.clone();
+                    hoveredMesh.material = originalMat;
+                    hoveredMesh.userData.originalMaterial = null;
+                }
+                
+                // Remove bounding box helper
+                if (boundingBoxHelper && boundingBoxHelper.parent) {
+                    boundingBoxHelper.parent.remove(boundingBoxHelper);
+                    boundingBoxHelper = null;
+                }
+                
+                // Remove corner indicators
+                cornerIndicators.forEach(indicator => {
+                    if (indicator.parent) {
+                        indicator.parent.remove(indicator);
+                    }
+                });
+                cornerIndicators = [];
+
+                // Reset cursor color
+                const crossEl = document.getElementById('cursor-cross');
+                if (crossEl) {
+                    crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+                }
+                
+                // Reset decoder state
+                targetText = '';
+                currentText = '';
+                textDecodeIndex = 0;
+                
+                // Hide tooltip
+                const tooltip = document.getElementById('tooltip');
+                if (tooltip) {
+                    tooltip.classList.remove('visible');
+                    // Stop typewriter animation
+                    tooltipTypewriterActive = false;
+                    tooltipCurrentText = '';
+                    tooltipTargetText = '';
+                    tooltipTypewriterIndex = 0;
+                    
+                    // Remove blinking class
+                    const tooltipStatus = document.getElementById('tooltip-status');
+                    if (tooltipStatus) {
+                        tooltipStatus.classList.remove('blinking');
+                    }
+                }
+                
+                // Hide part container
+                const partContainerEl = document.getElementById('part-container');
+                if (partContainerEl) {
+                    partContainerEl.classList.remove('visible');
+                }
+                
+                hoveredMesh = null;
+                hoverFadeProgress = 0;
+                return; // Exit early, don't process hover
+            }
+            
                 // If we're hovering a new mesh
                 if (currentHovered !== hoveredMesh) {
                     // Determine static health status based on part name/UUID
