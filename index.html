@@ -63,6 +63,22 @@
         #cursor-cross.hovering::after {
             background: #ff0000;
         }
+        
+        /* Cursor color states */
+        #cursor-cross.warning::before,
+        #cursor-cross.warning::after {
+            background: #ff4444; /* Red for warnings */
+        }
+        
+        #cursor-cross.good::before,
+        #cursor-cross.good::after {
+            background: #44ff44; /* Green for good status */
+        }
+        
+        #cursor-cross.neutral::before,
+        #cursor-cross.neutral::after {
+            background: #ffd700; /* Yellow for neutral status */
+        }
         /* vertical bar */
         #cursor-cross::before {
             width: 2px;
@@ -74,6 +90,82 @@
             height: 2px;
         }
         
+        /* Tooltip styling */
+        #tooltip {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0 !important; /* Force hidden by default */
+            transition: opacity 0.2s ease;
+            transform: translate(40px, -50%); /* Position 40px to the right of cursor */
+        }
+        
+        #tooltip.visible {
+            opacity: 1 !important; /* Force visible when class is added */
+        }
+        
+        #tooltip-content {
+            background: rgba(0, 0, 0, 0.8); /* Same darkening effect as overlay */
+            color: #ffd700; /* Yellow text */
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 100;
+            padding: 8px 12px;
+            white-space: nowrap;
+            text-shadow: 
+                0 0 5px rgba(255, 140, 0, 0.5),
+                0 0 10px rgba(255, 140, 0, 0.3);
+        }
+        
+        #tooltip-part-name {
+            font-weight: 400;
+            margin-bottom: 2px;
+            font-size: 14px; /* Same size as tooltip content */
+        }
+        
+        #tooltip-status {
+            font-size: 14px; /* Same size as part name */
+            opacity: 1.0; /* Full opacity for status text */
+        }
+        
+        #tooltip-status.warning {
+            color: #ff4444; /* Red for maintenance warnings */
+        }
+        
+        #tooltip-status.good {
+            color: #44ff44; /* Green for good status */
+        }
+        
+        /* Hard blink effect for status line */
+        #tooltip-status.blinking {
+            animation: hardBlink 0.1s infinite; /* 10Hz = 1/10 = 0.1s */
+        }
+        
+        @keyframes hardBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* Typewriter effect */
+        .typewriter {
+            overflow: hidden;
+            border-right: 2px solid #ffd700;
+            white-space: nowrap;
+            animation: typing 0.5s steps(20, end), blink-caret 0.75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #ffd700; }
+        }
+        
         #part-container {
             position: fixed;
             top: 50%;
@@ -82,12 +174,18 @@
             opacity: 0;
             z-index: 10; /* ensure overlay above canvas for backdrop-filter */
             isolation: isolate; /* create new stacking context for backdrop-filter */
-            transform: translateY(-50%) scale(0.8);
+            transform: translateY(-50%) scale(0.84); /* 5% larger than 0.8 */
             transform-origin: top left;
         }
         
         #part-container.visible {
             opacity: 1;
+        }
+        
+        /* Ensure window is completely hidden when not visible */
+        #part-container:not(.visible) {
+            opacity: 0 !important;
+            pointer-events: none;
         }
         
         #part-name {
@@ -148,6 +246,12 @@
         <div id="part-info"></div>
     </div>
     <div id="cursor-cross"></div>
+    <div id="tooltip">
+        <div id="tooltip-content">
+            <div id="tooltip-part-name"></div>
+            <div id="tooltip-status"></div>
+        </div>
+    </div>
     <script type="importmap">
     {
         "imports": {

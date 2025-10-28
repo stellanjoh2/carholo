@@ -530,7 +530,7 @@ let hoveredMesh = null;
 let hoverFadeProgress = 0;
 let boundingBoxHelper = null;
 let cornerIndicators = [];
-let screenOutline = null;
+// screenOutline removed completely
 let enableScreenOutline = false; // feature toggle
 let warningMesh = null;
 let warningOriginalEmissive = null;
@@ -541,6 +541,13 @@ let currentText = '';
 let targetText = '';
 let textDecodeIndex = 0;
 let textDecodeSpeed = 3; // characters per frame
+
+// Tooltip typewriter animation
+let tooltipTypewriterActive = false;
+let tooltipCurrentText = '';
+let tooltipTargetText = '';
+let tooltipTypewriterIndex = 0;
+let tooltipTypewriterSpeed = 2; // characters per frame
 
 // Sound effects - preload audio
 const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
@@ -557,6 +564,13 @@ document.addEventListener('click', () => {
 }, { once: true });
 
 function onMouseMove(event) {
+    // Update tooltip position
+    const tooltip = document.getElementById('tooltip');
+    if (tooltip) {
+        tooltip.style.left = `${event.clientX}px`;
+        tooltip.style.top = `${event.clientY}px`;
+    }
+    
     // Normalize mouse coordinates to -1 to 1 range for shader inputs
     mouseX = (event.clientX / window.innerWidth) * 2 - 1;
     mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -571,15 +585,95 @@ function onMouseMove(event) {
         const intersects = raycaster.intersectObject(porscheModel, true);
         const crossEl = document.getElementById('cursor-cross');
         if (crossEl) {
-            if (intersects.length > 0) crossEl.classList.add('hovering');
-            else crossEl.classList.remove('hovering');
+            // Cursor color is now managed by status-based classes
+            // No need to add 'hovering' class here
         }
         
         if (intersects.length > 0) {
             const currentHovered = intersects[0].object;
             
-            // If we're hovering a new mesh
-            if (currentHovered !== hoveredMesh) {
+                // If we're hovering a new mesh
+                if (currentHovered !== hoveredMesh) {
+                    // Determine static health status based on part name/UUID
+                    const partName = currentHovered.name || 'Unknown Part';
+                    const partId = currentHovered.uuid;
+                    
+                    // Create deterministic status based on part characteristics
+                    let randomStatus;
+                    const hash = partId.split('').reduce((a, b) => {
+                        a = ((a << 5) - a) + b.charCodeAt(0);
+                        return a & a;
+                    }, 0);
+                    
+                    // Use hash to determine status category
+                    const statusCategory = Math.abs(hash) % 3; // 0, 1, or 2
+                    
+                    if (statusCategory === 0) {
+                        // Good statuses
+                        const goodStatuses = [
+                            'Status: Operational',
+                            'Status: Excellent',
+                            'Status: Good Condition',
+                            'Status: Optimal Performance'
+                        ];
+                        randomStatus = goodStatuses[Math.abs(hash) % goodStatuses.length];
+                    } else if (statusCategory === 1) {
+                        // Warning statuses
+                        const warningStatuses = [
+                            'Status: Requires Maintenance',
+                            'Status: Warning - Check Soon'
+                        ];
+                        randomStatus = warningStatuses[Math.abs(hash) % warningStatuses.length];
+                    } else {
+                        // Neutral statuses
+                        const neutralStatuses = [
+                            'Status: Needs Inspection',
+                            'Status: Minor Wear'
+                        ];
+                        randomStatus = neutralStatuses[Math.abs(hash) % neutralStatuses.length];
+                    }
+                    
+                    // Show tooltip
+                    const tooltip = document.getElementById('tooltip');
+                    const tooltipPartName = document.getElementById('tooltip-part-name');
+                    const tooltipStatus = document.getElementById('tooltip-status');
+                    
+                    if (tooltip && tooltipPartName && tooltipStatus) {
+                        tooltip.classList.add('visible');
+                        
+                        // Start typewriter effect for part name
+                        tooltipTargetText = currentHovered.name || 'Unknown Part';
+                        tooltipCurrentText = '';
+                        tooltipTypewriterIndex = 0;
+                        tooltipTypewriterActive = true;
+                        
+                        // Set status text and add appropriate class
+                        tooltipStatus.textContent = randomStatus;
+                        tooltipStatus.classList.remove('warning', 'good', 'blinking'); // Clear previous classes
+                        
+                        // Add blinking class for hard blink effect
+                        tooltipStatus.classList.add('blinking');
+                        
+                        // Update cursor color based on status
+                        const crossEl = document.getElementById('cursor-cross');
+                        if (crossEl) {
+                            crossEl.classList.remove('warning', 'good', 'neutral', 'hovering');
+                            
+                            if (randomStatus.includes('Maintenance') || randomStatus.includes('Warning')) {
+                                tooltipStatus.classList.add('warning');
+                                crossEl.classList.add('warning');
+                            } else if (randomStatus.includes('Operational') || randomStatus.includes('Excellent') || 
+                                       randomStatus.includes('Good Condition') || randomStatus.includes('Optimal')) {
+                                tooltipStatus.classList.add('good');
+                                crossEl.classList.add('good');
+                            } else {
+                                crossEl.classList.add('neutral');
+                            }
+                        }
+                        
+                        // Tooltip visibility is controlled by CSS classes, not inline styles
+                    }
+                
                 // Restore previous hovered mesh
                 if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
                     const originalMat = hoveredMesh.userData.originalMaterial;
@@ -620,11 +714,11 @@ function onMouseMove(event) {
                     hoverSound.currentTime = 0;
                     hoverSound.play().catch(e => console.log('Sound playback failed:', e));
                     
-                    // Start decoder animation for part name
+                    // Start decoder animation for model name (headline)
                     const partContainerEl = document.getElementById('part-container');
                     const partNameEl = document.getElementById('part-name');
                     if (partNameEl) {
-                        targetText = hoveredMesh.name || 'Car Part';
+                        targetText = 'Porsche 911'; // Source model name as headline
                         currentText = '';
                         textDecodeIndex = 0;
                     }
@@ -638,6 +732,9 @@ function onMouseMove(event) {
                     const partInfoEl = document.getElementById('part-info');
                     if (partInfoEl) {
                         const info = [];
+                        info.push(`─────────────────────────────────────────`);
+                        info.push(`  PART NAME:`);
+                        info.push(`    ${hoveredMesh.name || 'Unnamed Part'}`);
                         info.push(`─────────────────────────────────────────`);
                         info.push(`  POSITION:`);
                         info.push(`    x: ${hoveredMesh.position.x.toFixed(2)}`);
@@ -706,10 +803,19 @@ function onMouseMove(event) {
                         });
                     }
                     
+                    // Determine color based on status (moved here for proper scope)
+                    let statusColor = 0xffd700; // Default yellow
+                    if (randomStatus.includes('Maintenance') || randomStatus.includes('Warning')) {
+                        statusColor = 0xff4444; // Red for warnings
+                    } else if (randomStatus.includes('Operational') || randomStatus.includes('Excellent') || 
+                               randomStatus.includes('Good Condition') || randomStatus.includes('Optimal')) {
+                        statusColor = 0x44ff44; // Green for good status
+                    }
+                    
                     const wireframeMat = new THREE.MeshStandardMaterial({
-                        color: 0xff6600,
+                        color: statusColor, // Use status-based color
                         wireframe: true,
-                        emissive: 0xff6600, // Orange
+                        emissive: statusColor, // Match status color
                         emissiveIntensity: 7.5 // 50% brighter (increased from 5.0)
                     });
                     
@@ -742,13 +848,17 @@ function onMouseMove(event) {
                             bbox.max.z - bbox.min.z
                         );
                         
+                        // Use the same color as determined for status
+                        const bboxColor = statusColor;
+                        
                         const edges = new THREE.EdgesGeometry(box);
                         const boundingBoxWireframe = new THREE.LineSegments(
                             edges,
                             new THREE.LineBasicMaterial({ 
-                                color: 0x00ffff, // Cyan
-                                emissive: 0x00ffff,
-                                emissiveIntensity: 7.5
+                                color: bboxColor, // Status-based color
+                                emissive: bboxColor,
+                                emissiveIntensity: 7.5,
+                                linewidth: 3 // Increased line width
                             })
                         );
                         
@@ -809,11 +919,12 @@ function onMouseMove(event) {
                             ];
                             
                             const crossMaterial = new THREE.LineBasicMaterial({ 
-                                color: 0xffd700, // Yellow to match wireframe
-                                emissive: 0xffd700,
+                                color: bboxColor, // Match bounding box color
+                                emissive: bboxColor,
                                 emissiveIntensity: 7.5,
                                 transparent: true,
-                                opacity: 1.0
+                                opacity: 1.0,
+                                linewidth: 3 // Increased line width
                             });
                             
                             const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -827,42 +938,29 @@ function onMouseMove(event) {
                             cornerIndicators.push(cross);
                         });
 
-                        // 2D screen-facing outline disabled (feature toggle)
-                        if (enableScreenOutline) {
-                            const min = bbox.min.clone();
-                            const max = bbox.max.clone();
-                            const size = new THREE.Vector3().subVectors(max, min);
-                            const worldCenter = hoveredMesh.localToWorld(bbox.getCenter(new THREE.Vector3()));
-                            const boxWidthWorld = size.x;
-                            const boxHeightWorld = size.y;
-                            if (screenOutline) {
-                                scene.remove(screenOutline);
-                                screenOutline.geometry.dispose();
-                                screenOutline.material.dispose();
-                                screenOutline = null;
-                            }
-                            const outlineGeom = new THREE.BufferGeometry();
-                            const hw = boxWidthWorld * 0.5;
-                            const hh = boxHeightWorld * 0.5;
-                            const outlinePoints = new Float32Array([
-                                -hw, -hh, 0,
-                                 hw, -hh, 0,
-                                 hw,  hh, 0,
-                                -hw,  hh, 0,
-                                -hw, -hh, 0
-                            ]);
-                            outlineGeom.setAttribute('position', new THREE.BufferAttribute(outlinePoints, 3));
-                            const outlineMat = new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.9 });
-                            screenOutline = new THREE.Line(outlineGeom, outlineMat);
-                            screenOutline.position.copy(worldCenter);
-                            screenOutline.quaternion.copy(camera.quaternion);
-                            scene.add(screenOutline);
-                        }
+                        // 2D screen-facing outline removed completely
                     }
                 }
             }
     } else {
         // Mouse not over anything - restore immediately
+        // Hide tooltip
+        const tooltip = document.getElementById('tooltip');
+        if (tooltip) {
+            tooltip.classList.remove('visible');
+            // Stop typewriter animation
+            tooltipTypewriterActive = false;
+            tooltipCurrentText = '';
+            tooltipTargetText = '';
+            tooltipTypewriterIndex = 0;
+            
+            // Remove blinking class
+            const tooltipStatus = document.getElementById('tooltip-status');
+            if (tooltipStatus) {
+                tooltipStatus.classList.remove('blinking');
+            }
+        }
+        
         if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
             // Restore original material immediately
             if (hoveredMesh.material) {
@@ -878,12 +976,7 @@ function onMouseMove(event) {
             boundingBoxHelper.parent.remove(boundingBoxHelper);
             boundingBoxHelper = null;
         }
-        if (screenOutline) {
-            scene.remove(screenOutline);
-            screenOutline.geometry.dispose();
-            screenOutline.material.dispose();
-            screenOutline = null;
-        }
+        // Screen outline removed completely
         
         // Remove corner indicators
         cornerIndicators.forEach(indicator => {
@@ -895,7 +988,9 @@ function onMouseMove(event) {
 
         // Reset cursor color
         const crossEl = document.getElementById('cursor-cross');
-        if (crossEl) crossEl.classList.remove('hovering');
+        if (crossEl) {
+            crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+        }
         
         // Reset decoder state
         targetText = '';
@@ -1103,6 +1198,24 @@ loader.load(
         // Adjust camera to view the car
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // Create wireframed sphere around the car
+        const sphereRadius = maxDim * 0.8; // Slightly larger than the car
+        const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 16);
+        const sphereEdges = new THREE.EdgesGeometry(sphereGeometry);
+        const sphereWireframe = new THREE.LineSegments(
+            sphereEdges,
+            new THREE.LineBasicMaterial({
+                color: 0xffd700, // Yellow like our wireframe
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        
+        // Position sphere at the same center as the car
+        sphereWireframe.position.copy(object.position);
+        sphereWireframe.name = 'referenceSphere';
+        scene.add(sphereWireframe);
         camera.position.set(maxDim * 0.3825, maxDim * 0.3078, maxDim * 0.3825); // Even closer and even lower
         controls.target = new THREE.Vector3(0, 0, 0);
         controls.update();
@@ -1182,7 +1295,7 @@ loader.load(
             if (geom.attributes && geom.attributes.position) {
                 const pos = geom.attributes.position;
                 const count = pos.count;
-                const stride = 8; // take every 8th vertex (another ~50% reduction from current)
+                const stride = 10; // take every 10th vertex (25% reduction from stride 8)
                 const newCount = Math.max(1, Math.floor(count / stride));
                 const sampled = new Float32Array(newCount * 3);
                 let w = 0;
@@ -1257,11 +1370,38 @@ function animate() {
     grainTime += 0.01;
     grainPass.uniforms.time.value = grainTime;
 
-    // Warning blink (red) at 4 Hz
+    // Floor light color synced to hovered object health (static, no blinking)
     if (warningMesh && warningMesh.material) {
-        const blinkHz = 4.0;
-        const on = Math.sin(grainTime * Math.PI * 2.0 * blinkHz) > 0.0;
-        warningMesh.material.emissiveIntensity = on ? 7.5 : 0.0;
+        // Determine light color based on hovered object health
+        let lightColor = 0xff0000; // Default red
+        let lightIntensity = 7.5;
+        
+        if (hoveredMesh) {
+            // Get the health status for the currently hovered mesh
+            const partId = hoveredMesh.uuid;
+            const hash = partId.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0);
+            const statusCategory = Math.abs(hash) % 3;
+            
+            if (statusCategory === 0) {
+                // Good status - green light
+                lightColor = 0x44ff44;
+                lightIntensity = 5.0; // Slightly dimmer for good status
+            } else if (statusCategory === 1) {
+                // Warning status - red light
+                lightColor = 0xff4444;
+                lightIntensity = 7.5;
+            } else {
+                // Neutral status - yellow light
+                lightColor = 0xffd700;
+                lightIntensity = 6.0;
+            }
+        }
+        
+        warningMesh.material.emissive.setHex(lightColor);
+        warningMesh.material.emissiveIntensity = lightIntensity;
         warningMesh.material.needsUpdate = true;
     }
     
@@ -1303,10 +1443,24 @@ function animate() {
         }
     }
     
+    // Tooltip typewriter animation
+    if (tooltipTypewriterActive && tooltipTypewriterIndex < tooltipTargetText.length) {
+        tooltipTypewriterIndex += tooltipTypewriterSpeed;
+        if (tooltipTypewriterIndex >= tooltipTargetText.length) {
+            tooltipTypewriterIndex = tooltipTargetText.length;
+        }
+        tooltipCurrentText = tooltipTargetText.substring(0, Math.floor(tooltipTypewriterIndex));
+        const tooltipPartNameEl = document.getElementById('tooltip-part-name');
+        if (tooltipPartNameEl) {
+            tooltipPartNameEl.textContent = tooltipCurrentText;
+        }
+    }
+    
     // Flicker effect on all text
-    const flickerOpacity = 0.75 + Math.random() * 0.25; // Between 0.75 and 1.0
+    // Text flicker effect - only when visible
     const partContainerEl = document.getElementById('part-container');
-    if (partContainerEl) {
+    if (partContainerEl && partContainerEl.classList.contains('visible')) {
+        const flickerOpacity = 0.75 + Math.random() * 0.25; // Between 0.75 and 1.0
         partContainerEl.style.opacity = flickerOpacity;
     }
     
@@ -1320,28 +1474,7 @@ function animate() {
         // No fade effects - instant on/off handled in onMouseMove
         
         // Bounding box now inherits transformation as child of hoveredMesh
-        // Keep the 2D screen outline facing the camera and sized per hovered object
-        if (enableScreenOutline && screenOutline && hoveredMesh) {
-            const bbox = hoveredMesh.geometry && (hoveredMesh.geometry.boundingBox || (hoveredMesh.geometry.computeBoundingBox(), hoveredMesh.geometry.boundingBox));
-            if (bbox) {
-                const size = new THREE.Vector3().subVectors(bbox.max, bbox.min);
-                const worldCenter = hoveredMesh.localToWorld(bbox.getCenter(new THREE.Vector3()));
-                const boxWidthWorld = size.x;
-                const boxHeightWorld = size.y;
-
-                const hw = boxWidthWorld * 0.5;
-                const hh = boxHeightWorld * 0.5;
-                const arr = screenOutline.geometry.attributes.position.array;
-                arr[0] = -hw; arr[1] = -hh; arr[2] = 0;
-                arr[3] =  hw; arr[4] = -hh; arr[5] = 0;
-                arr[6] =  hw; arr[7] =  hh; arr[8] = 0;
-                arr[9] = -hw; arr[10]=  hh; arr[11]= 0;
-                arr[12]= -hw; arr[13]= -hh; arr[14]= 0;
-                screenOutline.geometry.attributes.position.needsUpdate = true;
-                screenOutline.position.copy(worldCenter);
-                screenOutline.quaternion.copy(camera.quaternion);
-            }
-        }
+        // 2D screen outline removed completely
         
         // Update wireframe cycle with smooth transitions - DISABLED
         if (false && porscheModel.userData.wireframeCycle) {
