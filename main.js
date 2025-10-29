@@ -164,6 +164,7 @@ scene.add(backLight);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Increased significantly
 scene.add(ambientLight);
 
+
 // No HDRI - keeping it lightweight
 
 // Post-processing with Bloom
@@ -1399,6 +1400,340 @@ loader.load(
             }
         });
         
+        // Rename car parts to proper English names
+        const partNameMap = {
+            // French to English translations (with variations)
+            'carrosserie': 'Body Panel',
+            'carosserie': 'Body Panel',
+            'carroserie': 'Body Panel',
+            'caroserie': 'Body Panel',
+            'chassis': 'Chassis Frame',
+            'châssis': 'Chassis Frame',
+            'cadre': 'Frame Structure',
+            'coque': 'Body Shell',
+            'exterieur': 'Exterior Panel',
+            'extérieur': 'Exterior Panel',
+            'interieur': 'Interior Panel',
+            'intérieur': 'Interior Panel',
+            'porte': 'Door Panel',
+            'portes': 'Door Panel',
+            'capot': 'Hood Panel',
+            'coffre': 'Trunk Lid',
+            'pare': 'Bumper',
+            'pare': 'Windshield',
+            'grille': 'Front Grille',
+            'vitre': 'Window Glass',
+            'vitres': 'Window Glass',
+            'fenetre': 'Window Glass',
+            'fenêtre': 'Window Glass',
+            'fenetres': 'Window Glass',
+            'fenêtres': 'Window Glass',
+            'retro': 'Side Mirror',
+            'rétro': 'Side Mirror',
+            'retroviseur': 'Side Mirror',
+            'rétroviseur': 'Side Mirror',
+            'siege': 'Seat Assembly',
+            'siège': 'Seat Assembly',
+            'sieges': 'Seat Assembly',
+            'sièges': 'Seat Assembly',
+            'volant': 'Steering Wheel',
+            'tableau': 'Dashboard',
+            'tableau': 'Dashboard',
+            'console': 'Center Console',
+            'pedale': 'Pedal Assembly',
+            'pédale': 'Pedal Assembly',
+            'pedales': 'Pedal Assembly',
+            'pédales': 'Pedal Assembly',
+            'frein': 'Brake System',
+            'freins': 'Brake System',
+            'roue': 'Wheel Assembly',
+            'roues': 'Wheel Assembly',
+            'pneu': 'Tire',
+            'pneus': 'Tire',
+            'jante': 'Wheel Rim',
+            'jantes': 'Wheel Rim',
+            'suspension': 'Suspension System',
+            'suspensions': 'Suspension System',
+            'amortisseur': 'Shock Absorber',
+            'amortisseurs': 'Shock Absorber',
+            'ressort': 'Coil Spring',
+            'ressorts': 'Coil Spring',
+            'moteur': 'Engine Block',
+            'cylindre': 'Cylinder Head',
+            'cylindres': 'Cylinder Head',
+            'piston': 'Piston Assembly',
+            'pistons': 'Piston Assembly',
+            'vilebrequin': 'Crankshaft',
+            'arbre': 'Camshaft',
+            'soupape': 'Valve System',
+            'soupapes': 'Valve System',
+            'admission': 'Intake Manifold',
+            'echappement': 'Exhaust System',
+            'échappement': 'Exhaust System',
+            'turbo': 'Turbocharger',
+            'compresseur': 'Supercharger',
+            'batterie': 'Battery',
+            'alternateur': 'Alternator',
+            'demarreur': 'Starter Motor',
+            'démarreur': 'Starter Motor',
+            'allumage': 'Ignition System',
+            'bougie': 'Spark Plug',
+            'bougies': 'Spark Plug',
+            'bobine': 'Ignition Coil',
+            'bobines': 'Ignition Coil',
+            'fil': 'Wiring Harness',
+            'fils': 'Wiring Harness',
+            'fusible': 'Fuse Box',
+            'fusibles': 'Fuse Box',
+            'relais': 'Relay Module',
+            'transmission': 'Transmission',
+            'boite': 'Gearbox',
+            'boîte': 'Gearbox',
+            'embrayage': 'Clutch Assembly',
+            'volant': 'Flywheel',
+            'differentiel': 'Differential',
+            'différentiel': 'Differential',
+            'essieu': 'Drive Axle',
+            'essieux': 'Drive Axle',
+            'cardan': 'Driveshaft',
+            'radiateur': 'Radiator',
+            'refroidissement': 'Coolant System',
+            'thermostat': 'Thermostat',
+            'pompe': 'Water Pump',
+            'ventilateur': 'Cooling Fan',
+            'ventilateurs': 'Cooling Fan',
+            'tuyau': 'Coolant Hose',
+            'tuyaux': 'Coolant Hose',
+            'carburant': 'Fuel System',
+            'reservoir': 'Fuel Tank',
+            'réservoir': 'Fuel Tank',
+            'injecteur': 'Fuel Injector',
+            'injecteurs': 'Fuel Injector',
+            'filtre': 'Fuel Filter',
+            'filtres': 'Fuel Filter',
+            'ligne': 'Fuel Line',
+            'lignes': 'Fuel Line',
+            'air': 'Air System',
+            'masse': 'Mass Air Flow Sensor',
+            'papillon': 'Throttle Body',
+            'phare': 'Headlight',
+            'phares': 'Headlight',
+            'feu': 'Taillight',
+            'feux': 'Taillight',
+            'clignotant': 'Turn Signal',
+            'clignotants': 'Turn Signal',
+            'antibrouillard': 'Fog Light',
+            'antibrouillards': 'Fog Light',
+            'led': 'LED Light',
+            'aileron': 'Spoiler',
+            'ailerons': 'Spoiler',
+            'antenne': 'Antenna',
+            'antennes': 'Antenna',
+            'essuie': 'Wiper Blade',
+            'essuie': 'Wiper Blade',
+            'silencieux': 'Muffler',
+            'catalyseur': 'Catalytic Converter',
+            'capteur': 'Sensor Unit',
+            'capteurs': 'Sensor Unit',
+            'calculateur': 'Engine Control Unit',
+            'abs': 'ABS System',
+            'airbag': 'Airbag System',
+            'airbags': 'Airbag System',
+            
+            // Additional French terms found
+            'disque': 'Brake Disc',
+            'disques': 'Brake Disc',
+            'porterie': 'Door Assembly',
+            'porteries': 'Door Assembly',
+            'portiere': 'Door Panel',
+            'portieres': 'Door Panel',
+            'planche': 'Dashboard',
+            'planches': 'Dashboard',
+            'baguette': 'Trim Strip',
+            'baguettes': 'Trim Strip',
+            'enjo': 'Wheel Hub',
+            'enjos': 'Wheel Hub',
+            
+            // Body parts
+            'body': 'Body Panel',
+            'chassis': 'Chassis Frame',
+            'frame': 'Frame Structure',
+            'shell': 'Body Shell',
+            'exterior': 'Exterior Panel',
+            
+            // Engine components
+            'engine': 'Engine Block',
+            'motor': 'Engine Motor',
+            'cylinder': 'Cylinder Head',
+            'piston': 'Piston Assembly',
+            'crankshaft': 'Crankshaft',
+            'camshaft': 'Camshaft',
+            'valve': 'Valve System',
+            'intake': 'Intake Manifold',
+            'exhaust': 'Exhaust System',
+            'turbo': 'Turbocharger',
+            'supercharger': 'Supercharger',
+            
+            // Wheels and suspension
+            'wheel': 'Wheel Assembly',
+            'tire': 'Tire',
+            'rim': 'Wheel Rim',
+            'suspension': 'Suspension System',
+            'shock': 'Shock Absorber',
+            'spring': 'Coil Spring',
+            'strut': 'Strut Assembly',
+            'control': 'Control Arm',
+            'brake': 'Brake System',
+            'rotor': 'Brake Rotor',
+            'caliper': 'Brake Caliper',
+            'pad': 'Brake Pad',
+            
+            // Interior
+            'seat': 'Seat Assembly',
+            'dashboard': 'Dashboard',
+            'steering': 'Steering Wheel',
+            'pedal': 'Pedal Assembly',
+            'console': 'Center Console',
+            'door': 'Door Panel',
+            'handle': 'Door Handle',
+            'mirror': 'Side Mirror',
+            
+            // Electrical
+            'battery': 'Battery',
+            'alternator': 'Alternator',
+            'starter': 'Starter Motor',
+            'ignition': 'Ignition System',
+            'spark': 'Spark Plug',
+            'coil': 'Ignition Coil',
+            'wire': 'Wiring Harness',
+            'fuse': 'Fuse Box',
+            'relay': 'Relay Module',
+            
+            // Transmission
+            'transmission': 'Transmission',
+            'gearbox': 'Gearbox',
+            'clutch': 'Clutch Assembly',
+            'flywheel': 'Flywheel',
+            'differential': 'Differential',
+            'axle': 'Drive Axle',
+            'driveshaft': 'Driveshaft',
+            'cv': 'CV Joint',
+            
+            // Cooling system
+            'radiator': 'Radiator',
+            'coolant': 'Coolant System',
+            'thermostat': 'Thermostat',
+            'water': 'Water Pump',
+            'fan': 'Cooling Fan',
+            'hose': 'Coolant Hose',
+            
+            // Fuel system
+            'fuel': 'Fuel System',
+            'tank': 'Fuel Tank',
+            'pump': 'Fuel Pump',
+            'injector': 'Fuel Injector',
+            'filter': 'Fuel Filter',
+            'line': 'Fuel Line',
+            
+            // Air system
+            'air': 'Air System',
+            'filter': 'Air Filter',
+            'mass': 'Mass Air Flow Sensor',
+            'throttle': 'Throttle Body',
+            
+            // Glass and windows
+            'glass': 'Glass Panel',
+            'window': 'Window Glass',
+            'windshield': 'Windshield',
+            'windscreen': 'Windscreen',
+            'rear': 'Rear Window',
+            'side': 'Side Window',
+            
+            // Lights
+            'light': 'Light Assembly',
+            'headlight': 'Headlight',
+            'taillight': 'Taillight',
+            'brake': 'Brake Light',
+            'turn': 'Turn Signal',
+            'fog': 'Fog Light',
+            'led': 'LED Light',
+            
+            // Miscellaneous
+            'bumper': 'Bumper',
+            'grille': 'Front Grille',
+            'hood': 'Hood Panel',
+            'trunk': 'Trunk Lid',
+            'spoiler': 'Spoiler',
+            'wing': 'Rear Wing',
+            'antenna': 'Antenna',
+            'wiper': 'Wiper Blade',
+            'muffler': 'Muffler',
+            'catalyst': 'Catalytic Converter',
+            'sensor': 'Sensor Unit',
+            'ecu': 'Engine Control Unit',
+            'abs': 'ABS System',
+            'airbag': 'Airbag System'
+        };
+        
+        // Apply English names to car parts
+        object.traverse((child) => {
+            if (child.isMesh && child.name) {
+                const originalName = child.name.toLowerCase();
+                let renamed = false;
+                
+                // Clean the name - remove numbers, special chars, and common prefixes
+                const cleanName = originalName
+                    .replace(/[0-9_\-\.]/g, ' ')
+                    .replace(/\b(mesh|part|object|group|node|porsche|911)\b/g, '')
+                    .trim();
+                
+                // Find matching part name (try both original and cleaned name)
+                for (const [key, englishName] of Object.entries(partNameMap)) {
+                    if (originalName.includes(key) || cleanName.includes(key)) {
+                        child.name = englishName;
+                        console.log(`Renamed: "${child.name}" -> "${englishName}"`);
+                        renamed = true;
+                        break;
+                    }
+                }
+                
+                // If no match found, try to create a generic name
+                if (!renamed) {
+                    // Extract meaningful parts from the cleaned name
+                    const words = cleanName.split(/\s+/).filter(word => 
+                        word.length > 2 && 
+                        !['part', 'mesh', 'object', 'group', 'node', 'porsche', '911', 'car'].includes(word)
+                    );
+                    
+                    if (words.length > 0) {
+                        const capitalizedWords = words.map(word => 
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                        );
+                        child.name = capitalizedWords.join(' ');
+                        console.log(`Generic rename: "${originalName}" -> "${child.name}"`);
+                    } else {
+                        // Last resort - use a generic name based on position
+                        const bbox = new THREE.Box3().setFromObject(child);
+                        const center = bbox.getCenter(new THREE.Vector3());
+                        const size = bbox.getSize(new THREE.Vector3());
+                        
+                        if (center.y > 0.5) {
+                            child.name = 'Upper Body Panel';
+                        } else if (center.y < -0.5) {
+                            child.name = 'Lower Body Panel';
+                        } else if (center.x > 0.3) {
+                            child.name = 'Right Side Panel';
+                        } else if (center.x < -0.3) {
+                            child.name = 'Left Side Panel';
+                        } else {
+                            child.name = 'Center Body Panel';
+                        }
+                        console.log(`Position-based rename: "${originalName}" -> "${child.name}"`);
+                    }
+                }
+            }
+        });
+        
         // Center the model
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
@@ -1744,39 +2079,40 @@ function animate() {
     }
 
     // Floor light color synced to hovered object health (static, no blinking)
-    if (warningMesh && warningMesh.material) {
-        // Determine light color based on hovered object health
-        let lightColor = 0xff0000; // Default red
-        let lightIntensity = 7.5;
-        
-        if (hoveredMesh) {
-            // Get the health status for the currently hovered mesh
-            const partId = hoveredMesh.uuid;
-            const hash = partId.split('').reduce((a, b) => {
-                a = ((a << 5) - a) + b.charCodeAt(0);
-                return a & a;
-            }, 0);
-            const statusCategory = Math.abs(hash) % 3;
-            
-            if (statusCategory === 0) {
-                // Good status - green light
-                lightColor = 0x44ff44;
-                lightIntensity = 5.0; // Slightly dimmer for good status
-            } else if (statusCategory === 1) {
-                // Warning status - red light
-                lightColor = 0xff4444;
-                lightIntensity = 7.5;
-            } else {
-                // Neutral status - yellow light
-                lightColor = 0xffd700;
-                lightIntensity = 6.0;
-            }
-        }
-        
-        warningMesh.material.emissive.setHex(lightColor);
-        warningMesh.material.emissiveIntensity = lightIntensity;
-        warningMesh.material.needsUpdate = true;
-    }
+    // DISABLED - was causing wheels to glow constantly
+    // if (warningMesh && warningMesh.material) {
+    //     // Determine light color based on hovered object health
+    //     let lightColor = 0xff6600; // Default orange (no red glow when not hovering)
+    //     let lightIntensity = 7.5;
+    //     
+    //     if (hoveredMesh) {
+    //         // Get the health status for the currently hovered mesh
+    //         const partId = hoveredMesh.uuid;
+    //         const hash = partId.split('').reduce((a, b) => {
+    //             a = ((a << 5) - a) + b.charCodeAt(0);
+    //             return a & a;
+    //         }, 0);
+    //         const statusCategory = Math.abs(hash) % 3;
+    //         
+    //         if (statusCategory === 0) {
+    //             // Good status - green light
+    //             lightColor = 0x44ff44;
+    //             lightIntensity = 5.0; // Slightly dimmer for good status
+    //         } else if (statusCategory === 1) {
+    //             // Warning status - red light
+    //             lightColor = 0xff4444;
+    //             lightIntensity = 7.5;
+    //         } else {
+    //             // Neutral status - yellow light
+    //             lightColor = 0xffd700;
+    //             lightIntensity = 6.0;
+    //         }
+    //     }
+    //     
+    //     warningMesh.material.emissive.setHex(lightColor);
+    //     warningMesh.material.emissiveIntensity = lightIntensity;
+    //     warningMesh.material.needsUpdate = true;
+    // }
     
     // Update panel blur rect from DOM position
     const infoEl = document.getElementById('part-info');
@@ -1932,11 +2268,45 @@ function animate() {
         });
     }
     
+    
     composer.render();
 }
 
 // Initialize music player
 initializeMusicPlayer();
+
+// Reset any stuck hover states (fix for glowing wheels)
+function resetHoverStates() {
+    if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
+        // Restore original material
+        if (hoveredMesh.material) {
+            hoveredMesh.material.dispose();
+        }
+        const originalMat = hoveredMesh.userData.originalMaterial.clone();
+        hoveredMesh.material = originalMat;
+        hoveredMesh.userData.originalMaterial = null;
+    }
+    hoveredMesh = null;
+    hoverFadeProgress = 0;
+    
+    // Reset warningMesh (the glowing wheel) to original state
+    if (warningMesh && warningMesh.material && warningOriginalEmissive !== undefined) {
+        warningMesh.material.emissive = warningOriginalEmissive.clone();
+        warningMesh.material.emissiveIntensity = warningOriginalEmissiveIntensity;
+        warningMesh.material.needsUpdate = true;
+    }
+    
+    // Reset particles to default orange
+    if (particles && particles.userData) {
+        particles.userData.currentColor = 0xffd700;
+        particles.material.color.setHex(0xffd700);
+    }
+    
+    console.log('Hover states reset');
+}
+
+// Reset hover states on page load
+setTimeout(resetHoverStates, 1000);
 
 // Initialize fullscreen functionality
 initializeFullscreen();
