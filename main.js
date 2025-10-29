@@ -581,6 +581,26 @@ let warningMesh = null;
 let warningOriginalEmissive = null;
 let warningOriginalEmissiveIntensity = 0;
 
+// Soft hover light that matches hovered part status color
+let hoverPointLight = null;
+let hoverLightOwner = null;
+let hoverLightLastUpdate = 0;
+
+function cleanupHoverLights() {
+    // Ensure only one hover light exists in the scene
+    const toRemove = [];
+    scene.traverse((n) => {
+        if (n.isLight && n.userData && n.userData.isHoverLight) {
+            if (hoverPointLight && n === hoverPointLight) return;
+            toRemove.push(n);
+        }
+    });
+    toRemove.forEach((l) => {
+        if (l.parent) l.parent.remove(l);
+        l.dispose?.();
+    });
+}
+
 
 // Text decoding animation
 let currentText = '';
@@ -928,6 +948,15 @@ function onMouseMove(event) {
                     }
                 });
                 cornerIndicators = [];
+
+                // Remove hover point light
+                if (hoverPointLight) {
+                    scene.remove(hoverPointLight);
+                    hoverPointLight.dispose?.();
+                    hoverPointLight = null;
+                    hoverLightOwner = null;
+                    cleanupHoverLights();
+                }
 
                 // Reset cursor color
                 const crossEl = document.getElementById('cursor-cross');
@@ -1300,6 +1329,46 @@ function onMouseMove(event) {
                         // Start bounding box animation
                         startBoundingBoxAnimation();
                         
+                        // Create or update a soft point light matching part color
+                        // Light range scales with the largest dimension of the hovered part
+                        const worldBbox = new THREE.Box3().setFromObject(hoveredMesh);
+                        const worldCenter = worldBbox.getCenter(new THREE.Vector3());
+                        const worldSize = worldBbox.getSize(new THREE.Vector3());
+                        const largestDim = Math.max(worldSize.x, worldSize.y, worldSize.z);
+                        // Tighter range to reduce over-illumination
+                        const lightDistance = Math.max(2.0, largestDim * 4.0);
+                        const lightIntensity = 1.6; // still bright, but a bit gentler
+
+                        // Ensure no stray hover lights exist before creating/using one
+                        cleanupHoverLights();
+                        if (!hoverPointLight) {
+                            hoverPointLight = new THREE.PointLight(statusColor, lightIntensity, lightDistance);
+                            hoverPointLight.castShadow = false;
+                            hoverPointLight.decay = 2.0; // stronger falloff so light doesn't spill far
+                            hoverPointLight.userData.isHoverLight = true;
+                            hoverPointLight.name = 'HoverLight';
+                        }
+                        // Re-parent light to hovered mesh so it moves with the part
+                        if (hoverPointLight.parent !== hoveredMesh) {
+                            // Detach from previous parent, then attach to hovered mesh
+                            if (hoverPointLight.parent) hoverPointLight.parent.remove(hoverPointLight);
+                            hoveredMesh.add(hoverPointLight);
+                            hoverLightOwner = hoveredMesh;
+                        }
+                        // Always enforce correct color each frame (brute-force for correctness)
+                        hoverPointLight.color.setHex(statusColor);
+
+                        // Throttle only position/range/intensity to ~10Hz unless owner changes
+                        const now = performance.now();
+                        if (hoverLightOwner !== hoveredMesh || (now - hoverLightLastUpdate) > 100) {
+                            hoverPointLight.intensity = lightIntensity;
+                            hoverPointLight.distance = lightDistance;
+                            // Place at the local center of the part
+                            const localCenter = hoveredMesh.worldToLocal(worldCenter.clone());
+                            hoverPointLight.position.copy(localCenter);
+                            hoverLightLastUpdate = now;
+                        }
+
                         // Create 3D crosses at the 8 corners of the bounding box
                         const corners = [
                             new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
@@ -1422,6 +1491,15 @@ function onMouseMove(event) {
             }
         });
         cornerIndicators = [];
+
+        // Remove hover point light
+        if (hoverPointLight) {
+            scene.remove(hoverPointLight);
+            hoverPointLight.dispose?.();
+            hoverPointLight = null;
+            hoverLightOwner = null;
+            cleanupHoverLights();
+        }
 
         // Reset cursor color
         const crossEl = document.getElementById('cursor-cross');
@@ -1968,6 +2046,54 @@ loader.load(
                 }
             }
         });
+
+        // Identify and separate the large round base (podium) from the FBX so it can have a unique material
+        (function separateAndStylePodium(root) {
+            const candidates = [];
+            const tmp = new THREE.Vector3();
+            const modelBBox = new THREE.Box3().setFromObject(root);
+            const modelSize = modelBBox.getSize(new THREE.Vector3());
+            const minExpectedRadius = Math.max(modelSize.x, modelSize.z) * 0.5; // podium should be similar size to car footprint
+
+            root.traverse((child) => {
+                if (!child.isMesh) return;
+                const lname = (child.name || '').toLowerCase();
+                const named = lname.includes('floor') || lname.includes('podium') || lname.includes('base') || lname.includes('platform') || lname.includes('stand') || lname.includes('pedestal') || lname.includes('disc') || lname.includes('circle');
+                const bbox = new THREE.Box3().setFromObject(child);
+                const size = bbox.getSize(tmp);
+                const roundish = Math.abs(size.x - size.z) <= Math.max(size.x, size.z) * 0.12; // near circular in XZ
+                const flat = size.y <= Math.max(size.x, size.z) * 0.08; // thin slab
+                const bigEnough = Math.max(size.x, size.z) >= minExpectedRadius;
+                const belowCenter = bbox.getCenter(tmp).y <= modelBBox.getCenter(new THREE.Vector3()).y + size.y * 0.5; // not floating above
+                const score = (named ? 3 : 0) + (roundish ? 2 : 0) + (flat ? 1 : 0) + (bigEnough ? 1 : 0) + (belowCenter ? 1 : 0);
+                if (score > 0) candidates.push({ child, score, area: size.x * size.z });
+            });
+
+            if (candidates.length === 0) return;
+            candidates.sort((a, b) => (b.score - a.score) || (b.area - a.area));
+            const podiumMesh = candidates[0].child;
+
+            // Detach from FBX so it is its own top-level object and never shares materials
+            scene.attach(podiumMesh); // preserves world transform while changing parent
+            podiumMesh.name = 'Podium';
+
+            // Assign a clear, unique, non-specular material
+            podiumMesh.material = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a, // slightly darker
+                roughness: 0.5, // slightly shinier
+                metalness: 0.65, // a touch more metallic
+                envMapIntensity: 0.45
+            });
+            podiumMesh.material.needsUpdate = true;
+            podiumMesh.receiveShadow = false;
+            podiumMesh.castShadow = false;
+            podiumMesh.userData.isPodium = true;
+
+            console.log('[Podium]', {
+                name: podiumMesh.name,
+                uuid: podiumMesh.uuid
+            });
+        })(object);
         
         scene.add(object);
         porscheModel = object;
