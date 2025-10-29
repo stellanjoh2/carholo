@@ -2027,6 +2027,24 @@ loader.load(
         const center = box.getCenter(new THREE.Vector3());
         object.position.sub(center);
         
+        // Store original local transforms for every mesh so we can restore if anything drifts
+        object.updateMatrixWorld(true);
+        object.traverse((n) => {
+            if (n.isMesh || n.isGroup) {
+                n.userData.originalLocalMatrix = n.matrix.clone();
+            }
+        });
+
+        // Hard-restore original local transforms to ensure perfect fidelity on spawn
+        object.traverse((n) => {
+            if (n.userData && n.userData.originalLocalMatrix && (n.isMesh || n.isGroup)) {
+                const m = n.userData.originalLocalMatrix;
+                n.matrix.copy(m);
+                n.matrix.decompose(n.position, n.quaternion, n.scale);
+                n.updateMatrixWorld(true);
+            }
+        });
+
         // Identify and convert ONLY window/glass materials (by name only, not color)
         object.traverse((child) => {
             if (child.isMesh) {
@@ -2175,7 +2193,7 @@ loader.load(
             const modelSize = modelBBox.getSize(new THREE.Vector3());
             const down = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.30; // push far below floor
             root.traverse((node) => {
-                if (!(node.isMesh || node.isPoints)) return;
+                if (!node.isPoints) return; // only affect ghost/point helpers, never actual meshes
                 // Skip helpers/podium/wheels
                 if (node.userData?.isHelper) return;
                 const nm = (node.name || '').toLowerCase();
@@ -2293,21 +2311,9 @@ loader.load(
                     // Attempt auto-fix for mirrored left-side panels: flip X, recompute normals
                     const centerWorld = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
                     const relX = centerWorld.x - modelCenter.x;
-                    if (relX < 0) {
-                        geom.scale(-1, 1, 1);
-                        geom.computeVertexNormals();
-                        geom.attributes.normal.needsUpdate = true;
-                        geom.attributes.position.needsUpdate = true;
-                        geom.computeBoundingSphere?.();
-                        geom.computeBoundingBox?.();
-                        mesh.material.side = THREE.FrontSide;
-                        mesh.material.needsUpdate = true;
-                        console.log('[Normals] Auto-flipped X scale for left-side mesh:', mesh.name || mesh.uuid);
-                    } else {
-                        // As a safe fallback, render double-sided to hide artifacts
-                        mesh.material.side = THREE.DoubleSide;
-                        mesh.material.needsUpdate = true;
-                    }
+                    // Avoid mutating geometry; prefer double-sided to hide artifacts
+                    mesh.material.side = THREE.DoubleSide;
+                    mesh.material.needsUpdate = true;
                 }
             });
             if (suspects === 0) {
