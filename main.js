@@ -549,6 +549,32 @@ let hoveredMesh = null;
 let hoverFadeProgress = 0;
 let boundingBoxHelper = null;
 let cornerIndicators = [];
+
+// Bounding box animation system
+let boundingBoxAnimation = {
+    isAnimating: false,
+    startTime: 0,
+    duration: 200, // 0.2 seconds in milliseconds
+    startScale: new THREE.Vector3(0, 0, 0),
+    targetScale: new THREE.Vector3(1, 1, 1),
+    currentScale: new THREE.Vector3(0, 0, 0),
+    cornerIndicators: [] // Track corner indicators for animation
+};
+
+// Easing function for smooth animation (ease-out for clean scaling)
+function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+}
+
+// Start bounding box animation
+function startBoundingBoxAnimation() {
+    boundingBoxAnimation.isAnimating = true;
+    boundingBoxAnimation.startTime = performance.now();
+    boundingBoxAnimation.startScale.set(0, 0, 0);
+    boundingBoxAnimation.targetScale.set(1, 1, 1);
+    boundingBoxAnimation.currentScale.set(0, 0, 0);
+    boundingBoxAnimation.cornerIndicators = []; // Clear previous indicators
+}
 // screenOutline removed completely
 let enableScreenOutline = false; // feature toggle
 let warningMesh = null;
@@ -566,7 +592,7 @@ let tooltipTypewriterActive = false;
 let tooltipCurrentText = '';
 let tooltipTargetText = '';
 let tooltipTypewriterIndex = 0;
-let tooltipTypewriterSpeed = 2; // characters per frame
+let tooltipTypewriterSpeed = 1.5; // characters per frame (slower)
 
 // Sound effects - preload audio
 const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
@@ -1160,6 +1186,12 @@ function onMouseMove(event) {
                         hoveredMesh.add(boundingBoxWireframe);
                         boundingBoxHelper = boundingBoxWireframe;
                         
+                        // Set initial scale to 0 for animation
+                        boundingBoxHelper.scale.set(0, 0, 0);
+                        
+                        // Start bounding box animation
+                        startBoundingBoxAnimation();
+                        
                         // Create 3D crosses at the 8 corners of the bounding box
                         const corners = [
                             new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
@@ -1222,8 +1254,12 @@ function onMouseMove(event) {
                             cross.position.set(0, 0, 0);
                             cross.raycast = () => {}; // Disable raycasting
                             
+                            // Set initial scale to 0 for animation
+                            cross.scale.set(0, 0, 0);
+                            
                             hoveredMesh.add(cross);
                             cornerIndicators.push(cross);
+                            boundingBoxAnimation.cornerIndicators.push(cross);
                         });
 
                         // 2D screen-facing outline removed completely
@@ -2078,6 +2114,41 @@ function animate() {
         }
     }
 
+    // Update bounding box animation
+    if (boundingBoxAnimation.isAnimating && boundingBoxHelper) {
+        const currentTime = performance.now();
+        const elapsed = currentTime - boundingBoxAnimation.startTime;
+        const progress = Math.min(elapsed / boundingBoxAnimation.duration, 1);
+        
+        // Apply easing function
+        const easedProgress = easeOut(progress);
+        
+        // Interpolate scale
+        boundingBoxAnimation.currentScale.lerpVectors(
+            boundingBoxAnimation.startScale,
+            boundingBoxAnimation.targetScale,
+            easedProgress
+        );
+        
+        // Apply scale to bounding box
+        boundingBoxHelper.scale.copy(boundingBoxAnimation.currentScale);
+        
+        // Apply scale to corner indicators
+        boundingBoxAnimation.cornerIndicators.forEach(indicator => {
+            indicator.scale.copy(boundingBoxAnimation.currentScale);
+        });
+        
+        // Check if animation is complete
+        if (progress >= 1) {
+            boundingBoxAnimation.isAnimating = false;
+            boundingBoxHelper.scale.set(1, 1, 1); // Ensure final scale is exact
+            // Ensure corner indicators are at final scale
+            boundingBoxAnimation.cornerIndicators.forEach(indicator => {
+                indicator.scale.set(1, 1, 1);
+            });
+        }
+    }
+
     // Floor light color synced to hovered object health (static, no blinking)
     // DISABLED - was causing wheels to glow constantly
     // if (warningMesh && warningMesh.material) {
@@ -2126,9 +2197,9 @@ function animate() {
         panelBlurPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
     }
 
-    // Update corner indicator blink (16 blinks per second = 32 Hz)
+    // Update corner indicator blink (30 blinks per second = 60 Hz)
     if (cornerIndicators.length > 0) {
-        const blinkSpeed = 32; // 32 Hz = 16 on/off cycles per second
+        const blinkSpeed = 60; // 60 Hz = 30 on/off cycles per second (double speed)
         const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
         cornerIndicators.forEach(indicator => {
             if (indicator.material) {
@@ -2136,6 +2207,20 @@ function animate() {
                 indicator.material.transparent = true;
             }
         });
+    }
+
+    // Update tooltip blink (same speed as corner indicators)
+    const tooltipStatus = document.getElementById('tooltip-status');
+    const tooltipIcon = document.getElementById('tooltip-icon');
+    if (tooltipStatus && tooltipStatus.classList.contains('blinking')) {
+        const blinkSpeed = 60; // Same speed as corner indicators
+        const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
+        tooltipStatus.style.opacity = opacity;
+    }
+    if (tooltipIcon && tooltipIcon.classList.contains('blinking')) {
+        const blinkSpeed = 60; // Same speed as corner indicators
+        const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
+        tooltipIcon.style.opacity = opacity;
     }
     
     // Update text decoder animation
