@@ -597,7 +597,9 @@ function createPlanetaryOrbitsAround(object) {
     // Compute a comfortable radius based on model size
     const modelBox = new THREE.Box3().setFromObject(object);
     const modelSize = modelBox.getSize(new THREE.Vector3());
-    const modelRadius = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.65;
+    const maxDim = Math.max(modelSize.x, modelSize.y, modelSize.z);
+    const modelRadius = maxDim * 0.65;
+    const sphereRadius = maxDim * 0.8; // matches wireframe sphere radius
 
     // Helper to create one orbit with dashes
     function makeOrbit(radius, colorHex, tiltEuler, dashCount, spinSpeed) {
@@ -633,10 +635,13 @@ function createPlanetaryOrbitsAround(object) {
         orbitParents.push({ parent, spinSpeed });
     }
 
-    // Build 3 differently tilted orbits (all kept inside main sphere)
-    makeOrbit(modelRadius * 1.08, 0xffa500, new THREE.Euler(0.45, 0.0, 0.12), 64, 0.12);
-    makeOrbit(modelRadius * 1.20, 0xffd700, new THREE.Euler(0.1, 0.6, -0.2), 96, -0.08);
-    makeOrbit(modelRadius * 1.30, 0xff8844, new THREE.Euler(-0.35, -0.15, 0.4), 128, 0.06);
+    // Build 3 differently tilted orbits; ensure they never intersect the wireframe sphere
+    const r1 = sphereRadius * 0.88; // leave clear margin
+    const r2 = sphereRadius * 0.78;
+    const r3 = sphereRadius * 0.68;
+    makeOrbit(r1, 0xffa500, new THREE.Euler(0.45, 0.0, 0.12), 64, 0.12);
+    makeOrbit(r2, 0xffd700, new THREE.Euler(0.1, 0.6, -0.2), 96, -0.08);
+    makeOrbit(r3, 0xff8844, new THREE.Euler(-0.35, -0.15, 0.4), 128, 0.06);
 }
 
 // Scattered crosses around the car near the rings
