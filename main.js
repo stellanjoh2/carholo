@@ -639,6 +639,57 @@ function createPlanetaryOrbitsAround(object) {
     makeOrbit(modelRadius * 1.30, 0xff8844, new THREE.Euler(-0.35, -0.15, 0.4), 128, 0.06);
 }
 
+// Scattered crosses around the car near the rings
+const scatteredCrossGroup = new THREE.Group();
+let scatteredCrosses = [];
+scene.add(scatteredCrossGroup);
+
+function createScatteredCrossesAround(object, count = 32) {
+    // Use model radius for placement similar to rings
+    const modelBox = new THREE.Box3().setFromObject(object);
+    const modelSize = modelBox.getSize(new THREE.Vector3());
+    const modelRadius = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.65;
+    const targetRadius = modelRadius * 1.26; // close to outer ring but inside sphere
+
+    // Clear previous
+    scatteredCrosses.forEach(c => scatteredCrossGroup.remove(c));
+    scatteredCrosses = [];
+
+    // Golden spiral (Fibonacci sphere) distribution
+    const offset = 2 / count;
+    const increment = Math.PI * (3 - Math.sqrt(5));
+
+    for (let i = 0; i < count; i++) {
+        const y = ((i * offset) - 1) + (offset / 2);
+        const r = Math.sqrt(1 - y * y);
+        const phi = i * increment;
+        const pos = new THREE.Vector3(
+            Math.cos(phi) * r,
+            y,
+            Math.sin(phi) * r
+        ).multiplyScalar(targetRadius);
+
+        // Build a small 3D cross like bbox corners
+        const crossSize = modelRadius * 0.04; // half size compared to previous scattered crosses
+        const lineLength = crossSize * 0.3; // half the perceived arm length
+        const points = [
+            // X axis
+            new THREE.Vector3(-lineLength, 0, 0), new THREE.Vector3(lineLength, 0, 0),
+            // Y axis
+            new THREE.Vector3(0, -lineLength, 0), new THREE.Vector3(0, lineLength, 0),
+            // Z axis
+            new THREE.Vector3(0, 0, -lineLength), new THREE.Vector3(0, 0, lineLength),
+        ];
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.6 });
+        const cross = new THREE.LineSegments(geometry, material);
+        cross.position.copy(pos);
+        cross.raycast = () => {};
+        scatteredCrossGroup.add(cross);
+        scatteredCrosses.push(cross);
+    }
+}
+
 // Tooltip typewriter animation
 let tooltipTypewriterActive = false;
 let tooltipCurrentText = '';
@@ -2056,6 +2107,8 @@ loader.load(
 
         // Add planetary orbit dashes around the car (inside main sphere)
         createPlanetaryOrbitsAround(object);
+        // Scatter bbox-like crosses near the rings
+        createScatteredCrossesAround(object, 32);
 
         // Pick a tire-like mesh for warning blink (fallback: first child mesh)
     let candidate = null;
@@ -2282,6 +2335,16 @@ function animate() {
     if (orbitParents.length > 0) {
         orbitParents.forEach(({ parent, spinSpeed }) => {
             parent.rotation.y += spinSpeed * 0.01; // subtle per-frame spin
+        });
+    }
+
+    // Keep scattered crosses at a steady subtle opacity (no blinking)
+    if (scatteredCrosses.length > 0) {
+        scatteredCrosses.forEach(c => {
+            if (c.material) {
+                c.material.opacity = 0.55;
+                c.material.transparent = true;
+            }
         });
     }
     
