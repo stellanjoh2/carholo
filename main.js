@@ -244,7 +244,7 @@ composer.addPass(fisheyePass);
 const rgbSplitShader = {
     uniforms: {
         tDiffuse: { value: null },
-        amount: { value: 0.003 }
+        amount: { value: 0.00225 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -1977,9 +1977,10 @@ loader.load(
                     const bbox = new THREE.Box3().setFromObject(child);
                     const c = bbox.getCenter(new THREE.Vector3()).sub(namingCenter);
                     const s = bbox.getSize(new THREE.Vector3());
-                    const side = Math.abs(c.x) > namingMax * 0.20; // left/right side of car
-                    const tallThin = s.y > s.x * 1.1 && s.z < namingMax * 0.6;
-                    if (side && tallThin) {
+                    // Loosen thresholds: doors are wide/tall side panels near car sides
+                    const side = Math.abs(c.x) > namingMax * 0.10; // closer to side
+                    const panelLike = (s.y > s.x * 0.6) && (s.z < namingMax * 0.8);
+                    if (side && panelLike) {
                         child.name = 'Door Panel';
                     }
                 }
@@ -2107,6 +2108,7 @@ loader.load(
                     }
                     
                     child.material = physicalMaterial;
+                    child.material.side = THREE.DoubleSide; // render both sides to hide flipped faces
                     child.material.needsUpdate = true;
                 }
             }
@@ -2149,6 +2151,7 @@ loader.load(
                 metalness: 0.65, // a touch more metallic
                 envMapIntensity: 0.45
             });
+            podiumMesh.material.side = THREE.DoubleSide;
             podiumMesh.material.needsUpdate = true;
             podiumMesh.receiveShadow = true; // allow floor to receive shadows
             podiumMesh.castShadow = false;
@@ -2255,6 +2258,65 @@ loader.load(
         controls.target = new THREE.Vector3(0, 0, 0);
         controls.update();
         
+        // Diagnostics: check for potentially flipped/inverted normals
+        (function checkForFlippedNormals(root) {
+            const modelCenter = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+            const tmpVec = new THREE.Vector3();
+            const normal = new THREE.Vector3();
+            let suspects = 0;
+            root.traverse((mesh) => {
+                if (!mesh.isMesh || !mesh.geometry) return;
+                const geom = mesh.geometry;
+                // Ensure normals exist
+                if (!geom.attributes.normal) {
+                    geom.computeVertexNormals();
+                }
+                const pos = geom.attributes.position;
+                const nrm = geom.attributes.normal;
+                if (!pos || !nrm) return;
+                // Sample a handful of vertices
+                const step = Math.max(1, Math.floor(pos.count / 200));
+                let dotSum = 0, samples = 0;
+                for (let i = 0; i < pos.count; i += step) {
+                    tmpVec.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+                    mesh.localToWorld(tmpVec);
+                    normal.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
+                    normal.transformDirection(mesh.matrixWorld);
+                    const toOutside = tmpVec.clone().sub(modelCenter).normalize();
+                    dotSum += normal.dot(toOutside);
+                    samples++;
+                }
+                const avgDot = dotSum / Math.max(1, samples);
+                if (avgDot < -0.15) { // normals tend to point inward
+                    suspects++;
+                    console.warn('[Normals] Suspect inverted normals:', mesh.name || mesh.uuid, 'avgDot=', avgDot.toFixed(3));
+                    // Attempt auto-fix for mirrored left-side panels: flip X, recompute normals
+                    const centerWorld = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+                    const relX = centerWorld.x - modelCenter.x;
+                    if (relX < 0) {
+                        geom.scale(-1, 1, 1);
+                        geom.computeVertexNormals();
+                        geom.attributes.normal.needsUpdate = true;
+                        geom.attributes.position.needsUpdate = true;
+                        geom.computeBoundingSphere?.();
+                        geom.computeBoundingBox?.();
+                        mesh.material.side = THREE.FrontSide;
+                        mesh.material.needsUpdate = true;
+                        console.log('[Normals] Auto-flipped X scale for left-side mesh:', mesh.name || mesh.uuid);
+                    } else {
+                        // As a safe fallback, render double-sided to hide artifacts
+                        mesh.material.side = THREE.DoubleSide;
+                        mesh.material.needsUpdate = true;
+                    }
+                }
+            });
+            if (suspects === 0) {
+                console.log('[Normals] No inverted meshes detected.');
+            } else {
+                console.log(`[Normals] Suspects: ${suspects} (see warnings above)`);
+            }
+        })(object);
+
         // Collect all meshes for automatic wireframe cycling
         const allMeshes = [];
         object.traverse((child) => {
