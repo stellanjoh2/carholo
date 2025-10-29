@@ -556,6 +556,48 @@ let boundingBoxHelper = null;
 let cornerIndicators = [];
 let cornerLabels = [];
 let labelsLayerEl = null;
+let lockRing = null;
+let lockRingTargetScale = 1.0;
+let lockRingThickness = 0.01; // ratio of base radius (50% shorter lines)
+let lockRingTargetThickness = 0.01;
+let lockRingAnim = {
+    active: false,
+    startTime: 0,
+    duration: 200, // ms, same as bbox animation
+    fromScale: 1.0,
+    toScale: 1.0,
+    fromThick: 0.01,
+    toThick: 0.01,
+    fromOpacity: 0.0,
+    toOpacity: 0.0
+};
+
+function buildLockRingGeometry(baseRadius, thicknessRatio, segments = 32) {
+    const outer = baseRadius;
+    const inner = baseRadius * (1.0 - Math.max(0, Math.min(1, thicknessRatio)));
+    const positions = new Float32Array(segments * 2 * 3);
+    for (let i = 0; i < segments; i++) {
+        const a = (i / segments) * Math.PI * 2;
+        const cos = Math.cos(a);
+        const sin = Math.sin(a);
+        const ox = cos * outer;
+        const oz = sin * outer;
+        const ix = cos * inner;
+        const iz = sin * inner;
+        const idx = i * 2 * 3;
+        // outer point (x, y, z) with y=0 plane (we rotate to XZ later)
+        positions[idx + 0] = ox;
+        positions[idx + 1] = 0;
+        positions[idx + 2] = oz;
+        // inner point
+        positions[idx + 3] = ix;
+        positions[idx + 4] = 0;
+        positions[idx + 5] = iz;
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    return geom;
+}
 
 // Bounding box animation system
 let boundingBoxAnimation = {
@@ -667,9 +709,9 @@ function createPlanetaryOrbitsAround(object) {
     }
 
     // Build 3 differently tilted orbits; ensure they never intersect the wireframe sphere
-    const r1 = sphereRadius * 0.88; // leave clear margin
-    const r2 = sphereRadius * 0.78;
-    const r3 = sphereRadius * 0.68;
+    const r1 = sphereRadius * 0.96; // closer to the wireframe sphere, but no intersection
+    const r2 = sphereRadius * 0.90;
+    const r3 = sphereRadius * 0.84;
     makeOrbit(r1, 0xffa500, new THREE.Euler(0.45, 0.0, 0.12), 64, 0.12);
     makeOrbit(r2, 0xffd700, new THREE.Euler(0.1, 0.6, -0.2), 96, -0.08);
     makeOrbit(r3, 0xff8844, new THREE.Euler(-0.35, -0.15, 0.4), 128, 0.06);
@@ -1437,7 +1479,7 @@ function onMouseMove(event) {
                             hoverPointLight.position.copy(localCenter);
                             hoverLightLastUpdate = now;
                         }
-
+                        
                         // Create 3D crosses at the 8 corners of the bounding box
                         const corners = [
                             new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
@@ -1544,6 +1586,21 @@ function onMouseMove(event) {
                             boundingBoxAnimation.cornerLabels.push(labelEntry);
                         });
 
+                        // Update lock ring target and color to match hovered status
+                        if (lockRing && lockRing.material) {
+                            // Start lock animation: come from outside (>1) down to podium radius (1.0)
+                            lockRingAnim.active = true;
+                            lockRingAnim.startTime = performance.now();
+                            lockRingAnim.fromScale = Math.max(lockRing.scale.x || 1.0, 1.15);
+                            lockRingAnim.toScale = 1.0; // final = podium ring size
+                            lockRingAnim.fromThick = lockRingThickness;
+                            lockRingAnim.toThick = 0.03; // 50% shorter lines than before
+                            lockRingAnim.fromOpacity = lockRing.material.opacity;
+                            lockRingAnim.toOpacity = 1.0; // fully visible on lock
+                            lockRing.material.color.setHex(statusColor);
+                            lockRing.material.needsUpdate = true;
+                        }
+
                         // 2D screen-facing outline removed completely
                     }
                 }
@@ -1552,7 +1609,7 @@ function onMouseMove(event) {
         // Mouse not over anything - restore immediately
         // Hide tooltip
         const tooltip = document.getElementById('tooltip');
-            if (tooltip) {
+        if (tooltip) {
             tooltip.classList.remove('visible');
             // Stop typewriter animation
             tooltipTypewriterActive = false;
@@ -1573,7 +1630,7 @@ function onMouseMove(event) {
             }
                 if (tooltipPartName) {
                     tooltipPartName.style.transform = '';
-                }
+            }
         }
         
         if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
@@ -1584,6 +1641,24 @@ function onMouseMove(event) {
             const originalMat = hoveredMesh.userData.originalMaterial.clone();
             hoveredMesh.material = originalMat;
             hoveredMesh.userData.originalMaterial = null;
+        }
+
+        // Reset lock ring when not hovering
+        if (lockRing) {
+            // Instantly hide and reset on release
+            lockRingAnim.active = false;
+            lockRing.scale.set(1, 1, 1);
+            lockRingThickness = 0.02;
+            const baseR = lockRing.userData.baseRadius || 1.0;
+            const inner = baseR * (1.0 - lockRingThickness);
+            const outer = baseR;
+            const segs = 128;
+            const newGeom = new THREE.RingGeometry(inner, outer, segs);
+            lockRing.geometry.dispose();
+            lockRing.geometry = newGeom;
+            lockRing.material.opacity = 0.0;
+            lockRing.material.color.setHex(0xffd700);
+            lockRing.material.needsUpdate = true;
         }
         
         // Remove bounding box helper
@@ -2123,7 +2198,7 @@ loader.load(
                 n.updateMatrixWorld(true);
             }
         });
-
+        
         // Identify and convert ONLY window/glass materials (by name only, not color)
         const glassMeshes = [];
         object.traverse((child) => {
@@ -2149,13 +2224,13 @@ loader.load(
                         __sharedGlassMaterial = new THREE.MeshPhysicalMaterial({
                             color: 0x333333, // match car base color tone
                             opacity: 0.52, // ~20% more transparent than 0.65
-                            transparent: true,
-                            side: THREE.DoubleSide,
+                        transparent: true,
+                        side: THREE.DoubleSide,
                             roughness: 0.0,
                             metalness: 1.0,
                             envMapIntensity: 1.0,
                             envMap: scene.environment,
-                            clearcoat: 1.0,
+                        clearcoat: 1.0,
                             clearcoatRoughness: 0.0,
                             sheen: 2.0,
                             sheenRoughness: 0.3,
@@ -2468,6 +2543,36 @@ loader.load(
             }
         })(object);
         
+        // Create a lock-on ring above the podium
+        (function createLockRing() {
+            if (lockRing) return;
+            const podium = scene.getObjectByName('Podium');
+            const modelBox = new THREE.Box3().setFromObject(object);
+            const modelCenter = modelBox.getCenter(new THREE.Vector3());
+            let radius = 1.0;
+            let ringY = modelCenter.y; // align roughly with car body vertical center
+            if (podium && podium.isMesh) {
+                const pb = new THREE.Box3().setFromObject(podium);
+                const psize = pb.getSize(new THREE.Vector3());
+                radius = Math.max(psize.x, psize.z) * 0.5;
+                // keep Y aligned to car center instead of podium height
+            } else {
+                // Fallback: use model footprint
+                const msize = modelBox.getSize(new THREE.Vector3());
+                radius = Math.max(msize.x, msize.z) * 0.55;
+                ringY = modelCenter.y;
+            }
+            const segs = 32;
+            const geom = buildLockRingGeometry(radius, lockRingThickness, segs);
+            const mat = new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.0 });
+            lockRing = new THREE.LineSegments(geom, mat);
+            lockRing.position.set(modelCenter.x, ringY, modelCenter.z);
+            lockRing.rotation.x = 0; // geometry is already in XZ plane
+            lockRing.userData.baseRadius = radius;
+            lockRing.userData.segments = segs;
+            scene.add(lockRing);
+        })();
+        
         // Wheel lift removed per request - keep original wheel positions
 
         // Nudge stray tiny origin bits downward so they don't hover above the floor
@@ -2592,7 +2697,7 @@ loader.load(
             });
             // Logging disabled
         })(object);
-
+        
         // Collect all meshes for automatic wireframe cycling
         const allMeshes = [];
         object.traverse((child) => {
@@ -2716,15 +2821,15 @@ loader.load(
             }
         }
     });
-        // Attach to the same parent as the model so it follows all transforms
-        object.add(ghostGroup);
+    // Attach to the same parent as the model so it follows all transforms
+    object.add(ghostGroup);
 
         // Add planetary orbit dashes around the car (inside main sphere)
         createPlanetaryOrbitsAround(object);
         // Scatter bbox-like crosses near the rings
         createScatteredCrossesAround(object, 32);
 
-        // Pick a tire-like mesh for warning blink (fallback: first child mesh)
+    // Pick a tire-like mesh for warning blink (fallback: first child mesh)
     let candidate = null;
     object.traverse((child) => {
         if (child.isMesh) {
@@ -2868,6 +2973,39 @@ function animate() {
             boundingBoxAnimation.cornerIndicators.forEach(indicator => {
                 indicator.scale.set(1, 1, 1);
             });
+        }
+    }
+
+    // Animate lock ring scale smoothly toward target
+    if (lockRing) {
+        // Animate lock ring with same cadence as bbox (200ms, easeOut)
+        if (lockRingAnim.active) {
+            const now = performance.now();
+            const t = Math.min(1, (now - lockRingAnim.startTime) / lockRingAnim.duration);
+            const e = 1 - Math.pow(1 - t, 3); // easeOut cubic
+            const s = lockRingAnim.fromScale + (lockRingAnim.toScale - lockRingAnim.fromScale) * e;
+            const thick = lockRingAnim.fromThick + (lockRingAnim.toThick - lockRingAnim.fromThick) * e;
+            const op = lockRingAnim.fromOpacity + (lockRingAnim.toOpacity - lockRingAnim.fromOpacity) * e;
+            lockRing.scale.set(s, s, s);
+            lockRing.material.opacity = op;
+            if (Math.abs(thick - lockRingThickness) > 1e-4) {
+                lockRingThickness = thick;
+                const baseR = lockRing.userData.baseRadius || 1.0;
+                const segs = lockRing.userData.segments || 32;
+                const newGeom = buildLockRingGeometry(baseR, lockRingThickness, segs);
+                lockRing.geometry.dispose();
+                lockRing.geometry = newGeom;
+            }
+            if (t >= 1) lockRingAnim.active = false;
+        }
+
+        // Keep it slightly above podium even if the floor animates
+        // Align ring with car body vertical center and model horizontal center
+        if (porscheModel) {
+            const mb = new THREE.Box3().setFromObject(porscheModel);
+            const msize = mb.getSize(new THREE.Vector3());
+            const mcenter = mb.getCenter(new THREE.Vector3());
+            lockRing.position.set(mcenter.x, mcenter.y, mcenter.z);
         }
     }
 
