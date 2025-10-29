@@ -1346,9 +1346,9 @@ function onMouseMove(event) {
                             edges,
                             new THREE.LineBasicMaterial({ 
                                 color: bboxColor, // Status-based color
-                                emissive: bboxColor,
-                                emissiveIntensity: 7.5,
-                                linewidth: 3 // Increased line width
+                                transparent: true,
+                                opacity: 1.0,
+                                linewidth: 3
                             })
                         );
                         
@@ -1455,12 +1455,10 @@ function onMouseMove(event) {
                             ];
                             
                             const crossMaterial = new THREE.LineBasicMaterial({ 
-                                color: bboxColor, // Match bounding box color
-                                emissive: bboxColor,
-                                emissiveIntensity: 7.5,
+                                color: bboxColor,
                                 transparent: true,
                                 opacity: 1.0,
-                                linewidth: 3 // Increased line width
+                                linewidth: 3
                             });
                             
                             const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -2247,6 +2245,152 @@ loader.load(
                 uuid: podiumMesh.uuid
             });
         })(object);
+
+        // Replace heavy right-rear wheel with a clone of the left-rear wheel if confidently detected
+        (function replaceRightRearWheelWithClone(root) {
+            try {
+                function deepDispose(object) {
+                    object.traverse((o) => {
+                        if (o.geometry) {
+                            o.geometry.dispose?.();
+                        }
+                        if (o.material) {
+                            if (Array.isArray(o.material)) {
+                                o.material.forEach(m => m?.dispose?.());
+                            } else {
+                                o.material.dispose?.();
+                            }
+                        }
+                    });
+                }
+                function findWheelRoot(node) {
+                    const isWheelName = (nm) => nm.includes('wheel assembly') || nm.includes('wheel') || nm.includes('tire') || nm.includes('tyre') || nm.includes('rim') || nm.includes('roue') || nm.includes('pneu') || nm.includes('assembly');
+                    let cur = node;
+                    let best = node;
+                    while (cur && cur.parent && (cur.parent.isGroup || cur.parent.isObject3D)) {
+                        const nm = (cur.parent.name || '').toLowerCase();
+                        if (isWheelName(nm)) best = cur.parent;
+                        cur = cur.parent;
+                    }
+                    return best;
+                }
+
+                const wheels = [];
+                const bbox = new THREE.Box3().setFromObject(root);
+                const center = bbox.getCenter(new THREE.Vector3());
+                root.traverse((n) => {
+                    if (!n.isMesh && !n.isGroup) return;
+                    const rootWheel = findWheelRoot(n);
+                    if (!rootWheel || rootWheel.__wheelCollected) return;
+                    const nm = (rootWheel.name || '').toLowerCase();
+                    const likelyWheelName = nm.includes('wheel assembly') || nm.includes('wheel') || nm.includes('tire') || nm.includes('tyre') || nm.includes('rim') || nm.includes('roue') || nm.includes('pneu') || nm.includes('assembly');
+                    if (!likelyWheelName) return;
+                    const box = new THREE.Box3().setFromObject(rootWheel);
+                    const size = box.getSize(new THREE.Vector3());
+                    const diag = size.length();
+                    if (!isFinite(diag) || diag === 0) return;
+                    const c = box.getCenter(new THREE.Vector3());
+                    const roundish = Math.abs(size.x - size.z) / Math.max(1e-3, Math.max(size.x, size.z)) < 0.3 && size.y < Math.max(size.x, size.z) * 0.6;
+                    if (roundish) {
+                        rootWheel.__wheelCollected = true;
+                        wheels.push({ node: rootWheel, center: c, size });
+                    }
+                });
+                if (wheels.length < 2) {
+                    console.log('[WheelClone] Not enough wheel candidates found:', wheels.length);
+                    return;
+                }
+
+                const left = wheels.filter(w => w.center.x < center.x);
+                const right = wheels.filter(w => w.center.x >= center.x);
+                if (left.length === 0 || right.length === 0) {
+                    console.log('[WheelClone] Could not split wheels into left/right');
+                    return;
+                }
+
+                function farthestAlongZ(arr) {
+                    let best = arr[0];
+                    let bestDist = Math.abs(arr[0].center.z - center.z);
+                    for (let i = 1; i < arr.length; i++) {
+                        const d = Math.abs(arr[i].center.z - center.z);
+                        if (d > bestDist) { best = arr[i]; bestDist = d; }
+                    }
+                    return best;
+                }
+                const leftRear = farthestAlongZ(left);
+                let rightRear = farthestAlongZ(right);
+
+                if (!leftRear || !rightRear) {
+                    console.log('[WheelClone] Could not identify rear pair');
+                    return;
+                }
+
+                const zDelta = Math.abs(leftRear.center.z - rightRear.center.z);
+                const sizeDelta = Math.abs(leftRear.size.length() - rightRear.size.length()) / Math.max(1e-3, Math.max(leftRear.size.length(), rightRear.size.length()));
+                console.log('[WheelClone] Candidates:', { leftRear: leftRear.node.name, rightRear: rightRear.node.name, zDelta, sizeDelta });
+
+                // Decompose right-rear target transform (or mirror placement)
+                let target = rightRear.node;
+                let targetParent = target.parent || root;
+                target.updateWorldMatrix(true, true);
+                const targetMatrixWorld = target.matrixWorld.clone();
+                const targetPos = new THREE.Vector3();
+                const targetQuat = new THREE.Quaternion();
+                const targetScale = new THREE.Vector3();
+                targetMatrixWorld.decompose(targetPos, targetQuat, targetScale);
+
+                // If symmetry is too poor, mirror left-rear instead
+                const modelSize = bbox.getSize(new THREE.Vector3());
+                if (zDelta > modelSize.z * 0.2 || sizeDelta > 0.6) {
+                    const leftWorld = new THREE.Vector3();
+                    leftRear.node.getWorldPosition(leftWorld);
+                    targetPos.set(center.x + Math.abs(leftWorld.x - center.x), leftWorld.y, leftWorld.z);
+                    targetQuat.copy(leftRear.node.getWorldQuaternion(new THREE.Quaternion()));
+                    targetScale.copy(leftRear.node.getWorldScale(new THREE.Vector3()));
+                    target = null;
+                    targetParent = root;
+                    console.log('[WheelClone] Using mirrored placement fallback at', targetPos.toArray());
+                }
+
+                const source = leftRear.node;
+                const clone = source.clone(true);
+                clone.updateMatrixWorld(true);
+
+                const wasVisible = clone.visible;
+                scene.attach(clone);
+                clone.position.copy(targetPos);
+                clone.quaternion.copy(targetQuat);
+                clone.scale.copy(targetScale);
+                clone.updateMatrixWorld(true);
+                targetParent.attach(clone);
+                // Preserve naming for clarity
+                if (target && target.name) clone.name = target.name;
+                clone.visible = wasVisible;
+
+                if (target) {
+                    // Fully remove old high-poly wheel
+                    target.userData.replacedByClone = true;
+                    const parent = target.parent;
+                    deepDispose(target);
+                    parent?.remove(target);
+                } else {
+                    // Hide any wheel near the mirrored spot
+                    const hideRadius = Math.max(leftRear.size.x, leftRear.size.z) * 1.5;
+                    wheels.forEach((w) => {
+                        if (w.center.distanceTo(targetPos) < hideRadius && w.node !== source) {
+                            w.node.userData.replacedByClone = true;
+                            const parent = w.node.parent;
+                            deepDispose(w.node);
+                            parent?.remove(w.node);
+                        }
+                    });
+                }
+
+                console.log('[WheelClone] Replaced right-rear wheel with clone of left-rear:', { source: source.name, target: target ? target.name : '(mirrored placement)' });
+            } catch (err) {
+                console.warn('[WheelClone] Replacement failed:', err);
+            }
+        })(object);
         
         // Wheel lift removed per request - keep original wheel positions
 
@@ -2367,23 +2511,10 @@ loader.load(
                     dotSum += normal.dot(toOutside);
                     samples++;
                 }
-                const avgDot = dotSum / Math.max(1, samples);
-                if (avgDot < -0.15) { // normals tend to point inward
-                    suspects++;
-                    console.warn('[Normals] Suspect inverted normals:', mesh.name || mesh.uuid, 'avgDot=', avgDot.toFixed(3));
-                    // Attempt auto-fix for mirrored left-side panels: flip X, recompute normals
-                    const centerWorld = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
-                    const relX = centerWorld.x - modelCenter.x;
-                    // Avoid mutating geometry; prefer double-sided to hide artifacts
-                    mesh.material.side = THREE.DoubleSide;
-                    mesh.material.needsUpdate = true;
-                }
+                // Detection kept but logging disabled since we render DoubleSide
+                // const avgDot = dotSum / Math.max(1, samples);
             });
-            if (suspects === 0) {
-                console.log('[Normals] No inverted meshes detected.');
-            } else {
-                console.log(`[Normals] Suspects: ${suspects} (see warnings above)`);
-            }
+            // Logging disabled
         })(object);
 
         // Collect all meshes for automatic wireframe cycling
