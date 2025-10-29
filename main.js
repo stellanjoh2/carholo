@@ -554,6 +554,8 @@ let hoveredMesh = null;
 let hoverFadeProgress = 0;
 let boundingBoxHelper = null;
 let cornerIndicators = [];
+let cornerLabels = [];
+let labelsLayerEl = null;
 
 // Bounding box animation system
 let boundingBoxAnimation = {
@@ -579,6 +581,8 @@ function startBoundingBoxAnimation() {
     boundingBoxAnimation.targetScale.set(1, 1, 1);
     boundingBoxAnimation.currentScale.set(0, 0, 0);
     boundingBoxAnimation.cornerIndicators = []; // Clear previous indicators
+    // Clear labels in animation state as well
+    boundingBoxAnimation.cornerLabels = [];
 }
 // screenOutline removed completely
 let enableScreenOutline = false; // feature toggle
@@ -986,6 +990,11 @@ function onMouseMove(event) {
                         indicator.parent.remove(indicator);
                     }
                 });
+                // Remove any existing labels
+                if (cornerLabels.length && labelsLayerEl) {
+                    cornerLabels.forEach(({ el }) => labelsLayerEl.removeChild(el));
+                }
+                cornerLabels = [];
                 cornerIndicators = [];
 
                 // Remove hover point light
@@ -1096,6 +1105,10 @@ function onMouseMove(event) {
                     
                     if (tooltip && tooltipPartName && tooltipStatus && tooltipIcon) {
                         tooltip.classList.add('visible');
+                        // Scale part name by ~20%
+                        tooltipPartName.style.display = 'inline-block';
+                        tooltipPartName.style.transform = 'scale(1.2)';
+                        tooltipPartName.style.transformOrigin = 'left center';
                         
                         // Start typewriter effect for part name
                         tooltipTargetText = capitalizeFirstLetter(currentHovered.name || 'Unknown Part');
@@ -1107,22 +1120,36 @@ function onMouseMove(event) {
                         tooltipPartName.classList.remove('warning', 'good');
                         if (randomStatus.includes('Maintenance') || randomStatus.includes('Warning')) {
                             tooltipPartName.classList.add('warning');
+                            // Only warning tooltips blink
+                            tooltipStatus.classList.add('blinking');
+                            tooltipIcon.classList.add('blinking');
+                            // Let animator control opacity
                         } else if (randomStatus.includes('Operational') || randomStatus.includes('Excellent') || 
                                    randomStatus.includes('Good Condition') || randomStatus.includes('Optimal')) {
                             tooltipPartName.classList.add('good');
+                            tooltipStatus.classList.remove('blinking');
+                            tooltipIcon.classList.remove('blinking');
+                            // Ensure fully visible when not blinking
+                            tooltipStatus.style.opacity = '1';
+                            tooltipIcon.style.opacity = '1';
+                        } else {
+                            // Neutral/static state
+                            tooltipStatus.classList.remove('blinking');
+                            tooltipIcon.classList.remove('blinking');
+                            tooltipStatus.style.opacity = '1';
+                            tooltipIcon.style.opacity = '1';
                         }
                         
                         // Set status text and add appropriate class
                         tooltipStatus.textContent = randomStatus;
-                        tooltipStatus.classList.remove('warning', 'good', 'blinking'); // Clear previous classes
+                        tooltipStatus.classList.remove('warning', 'good'); // Keep blinking flag if set for warnings
                         
-                        // Add blinking class for hard blink effect
-                        tooltipStatus.classList.add('blinking');
+                        // Blinking is controlled above; do not force blink here
                         
                         // Set icon based on status
                         const iconName = getStatusIcon(randomStatus);
                         tooltipIcon.innerHTML = `<i data-feather="${iconName}"></i>`;
-                        tooltipIcon.classList.remove('warning', 'good', 'blinking'); // Clear previous classes
+                        tooltipIcon.classList.remove('warning', 'good'); // Keep blinking flag if set for warnings
                         
                         // Add appropriate color class to icon
                         if (randomStatus.includes('Maintenance') || randomStatus.includes('Warning')) {
@@ -1132,8 +1159,7 @@ function onMouseMove(event) {
                             tooltipIcon.classList.add('good');
                         }
                         
-                        // Add blinking class to icon
-                        tooltipIcon.classList.add('blinking');
+                        // Blinking is controlled above; do not force blink here
                         
                         // Initialize Feather icons
                         if (typeof feather !== 'undefined') {
@@ -1322,6 +1348,10 @@ function onMouseMove(event) {
                             indicator.parent.remove(indicator);
                         }
                     });
+                    if (cornerLabels.length && labelsLayerEl) {
+                        cornerLabels.forEach(({ el }) => labelsLayerEl.removeChild(el));
+                    }
+                    cornerLabels = [];
                     cornerIndicators = [];
                     
                     if (hoveredMesh.geometry) {
@@ -1426,11 +1456,8 @@ function onMouseMove(event) {
                             
                             // Calculate direction vector from center to corner to extend outward
                             const center = bbox.getCenter(new THREE.Vector3());
-                            const direction = corner.clone().sub(center).normalize();
-                            const offset = direction.multiplyScalar(crossSize); // Extend outward from corner
-                            
-                            // Create 6 lines extending from the offset position in all directions
-                            const centerPoint = corner.clone().add(offset);
+                            // Place cross exactly at the corner without offset
+                            const centerPoint = corner.clone();
                             const lineLength = crossSize * 0.3; // 2x width (was 0.15)
                             
                             const points = [
@@ -1474,6 +1501,47 @@ function onMouseMove(event) {
                             hoveredMesh.add(cross);
                             cornerIndicators.push(cross);
                             boundingBoxAnimation.cornerIndicators.push(cross);
+
+                            // Create/update labels layer once
+                            if (!labelsLayerEl) {
+                                labelsLayerEl = document.getElementById('labels-layer');
+                                if (!labelsLayerEl) {
+                                    labelsLayerEl = document.createElement('div');
+                                    labelsLayerEl.id = 'labels-layer';
+                                    labelsLayerEl.style.position = 'fixed';
+                                    labelsLayerEl.style.left = '0';
+                                    labelsLayerEl.style.top = '0';
+                                    labelsLayerEl.style.width = '100%';
+                                    labelsLayerEl.style.height = '100%';
+                                    labelsLayerEl.style.pointerEvents = 'none';
+                                    document.body.appendChild(labelsLayerEl);
+                                }
+                            }
+
+                            // Anchor object in 3D to track the cross center
+                            const labelAnchor = new THREE.Object3D();
+                            labelAnchor.position.copy(centerPoint);
+                            hoveredMesh.add(labelAnchor);
+
+                            // DOM element for 2D label
+                            const labelEl = document.createElement('div');
+                            labelEl.className = 'corner-label';
+                            labelEl.style.position = 'absolute';
+                            labelEl.style.transform = 'translate(-50%, -50%)';
+                            labelEl.style.fontFamily = 'monospace';
+                            labelEl.style.fontSize = '11px';
+                            const labelColorCss = '#' + ('000000' + bboxColor.toString(16)).slice(-6);
+                            labelEl.style.color = labelColorCss;
+                            labelEl.style.background = 'transparent';
+                            labelEl.style.padding = '0';
+                            labelEl.style.borderRadius = '0';
+                            labelEl.style.whiteSpace = 'nowrap';
+                            labelsLayerEl.appendChild(labelEl);
+
+                            const labelEntry = { anchor: labelAnchor, el: labelEl };
+                            cornerLabels.push(labelEntry);
+                            if (!boundingBoxAnimation.cornerLabels) boundingBoxAnimation.cornerLabels = [];
+                            boundingBoxAnimation.cornerLabels.push(labelEntry);
                         });
 
                         // 2D screen-facing outline removed completely
@@ -1484,7 +1552,7 @@ function onMouseMove(event) {
         // Mouse not over anything - restore immediately
         // Hide tooltip
         const tooltip = document.getElementById('tooltip');
-        if (tooltip) {
+            if (tooltip) {
             tooltip.classList.remove('visible');
             // Stop typewriter animation
             tooltipTypewriterActive = false;
@@ -1495,6 +1563,7 @@ function onMouseMove(event) {
             // Remove blinking class from status and icon
             const tooltipStatus = document.getElementById('tooltip-status');
             const tooltipIcon = document.getElementById('tooltip-icon');
+                const tooltipPartName = document.getElementById('tooltip-part-name');
             if (tooltipStatus) {
                 tooltipStatus.classList.remove('blinking');
             }
@@ -1502,6 +1571,9 @@ function onMouseMove(event) {
                 tooltipIcon.classList.remove('blinking', 'warning', 'good');
                 tooltipIcon.innerHTML = ''; // Clear icon
             }
+                if (tooltipPartName) {
+                    tooltipPartName.style.transform = '';
+                }
         }
         
         if (hoveredMesh && hoveredMesh.userData.originalMaterial) {
@@ -1527,6 +1599,10 @@ function onMouseMove(event) {
                 indicator.parent.remove(indicator);
             }
         });
+        if (cornerLabels.length && labelsLayerEl) {
+            cornerLabels.forEach(({ el }) => labelsLayerEl.removeChild(el));
+        }
+        cornerLabels = [];
         cornerIndicators = [];
 
         // Remove hover point light
@@ -2852,6 +2928,26 @@ function animate() {
                 indicator.material.opacity = opacity;
                 indicator.material.transparent = true;
             }
+        });
+    }
+
+    // Update 2D labels to follow corner anchors and show world XYZ
+    if (cornerLabels.length > 0) {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const world = new THREE.Vector3();
+        const ndc = new THREE.Vector3();
+        cornerLabels.forEach(({ anchor, el }) => {
+            if (!anchor || !el) return;
+            anchor.getWorldPosition(world);
+            ndc.copy(world).project(camera);
+            const x = (ndc.x * 0.5 + 0.5) * width;
+            let y = ( -ndc.y * 0.5 + 0.5) * height;
+            // Nudge label upward to sit above the cross
+            y -= 20; // pixels
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.textContent = `X ${world.x.toFixed(2)}  Y ${world.y.toFixed(2)}  Z ${world.z.toFixed(2)}`;
         });
     }
 
