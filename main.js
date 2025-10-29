@@ -588,6 +588,57 @@ let targetText = '';
 let textDecodeIndex = 0;
 let textDecodeSpeed = 3; // characters per frame
 
+// Planetary orbits (dashed ring dashes) around car
+const orbitsGroup = new THREE.Group();
+let orbitParents = [];
+scene.add(orbitsGroup);
+
+function createPlanetaryOrbitsAround(object) {
+    // Compute a comfortable radius based on model size
+    const modelBox = new THREE.Box3().setFromObject(object);
+    const modelSize = modelBox.getSize(new THREE.Vector3());
+    const modelRadius = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.65;
+
+    // Helper to create one orbit with dashes
+    function makeOrbit(radius, colorHex, tiltEuler, dashCount, spinSpeed) {
+        const parent = new THREE.Group();
+        parent.rotation.set(tiltEuler.x, tiltEuler.y, tiltEuler.z);
+
+        // Create very thin dash segments as lines (1px, like wireframes)
+        // Choose dash length so that dash length equals gap length along the arc
+        const phiStep = (Math.PI * 2) / dashCount;
+        const arcLengthPerStep = radius * phiStep;
+        const dashLength = arcLengthPerStep * 0.5; // dash == gap for symmetry
+        const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.8 });
+        for (let i = 0; i < dashCount; i++) {
+            const theta = (i / dashCount) * Math.PI * 2;
+            const center = new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius);
+            // Tangent direction along ring
+            const tangent = new THREE.Vector3(-Math.sin(theta), 0, Math.cos(theta)).normalize();
+            const start = center.clone().addScaledVector(tangent, -dashLength * 0.5);
+            const end = center.clone().addScaledVector(tangent, dashLength * 0.5);
+            const g = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const seg = new THREE.Line(g, lineMat.clone());
+            parent.add(seg);
+        }
+
+        // Optional faint guide ring (also as a thin line)
+        const circlePts = new THREE.Path().absarc(0, 0, radius, 0, Math.PI * 2, false).getPoints(256);
+        const circleGeom = new THREE.BufferGeometry().setFromPoints(circlePts.map(p => new THREE.Vector3(p.x, 0, p.y)));
+        const circleMat = new THREE.LineBasicMaterial({ color: colorHex, opacity: 0.18, transparent: true });
+        const circle = new THREE.LineLoop(circleGeom, circleMat);
+        parent.add(circle);
+
+        orbitsGroup.add(parent);
+        orbitParents.push({ parent, spinSpeed });
+    }
+
+    // Build 3 differently tilted orbits (all kept inside main sphere)
+    makeOrbit(modelRadius * 1.08, 0xffa500, new THREE.Euler(0.45, 0.0, 0.12), 64, 0.12);
+    makeOrbit(modelRadius * 1.20, 0xffd700, new THREE.Euler(0.1, 0.6, -0.2), 96, -0.08);
+    makeOrbit(modelRadius * 1.30, 0xff8844, new THREE.Euler(-0.35, -0.15, 0.4), 128, 0.06);
+}
+
 // Tooltip typewriter animation
 let tooltipTypewriterActive = false;
 let tooltipCurrentText = '';
@@ -2003,6 +2054,9 @@ loader.load(
         // Attach to the same parent as the model so it follows all transforms
         object.add(ghostGroup);
 
+        // Add planetary orbit dashes around the car (inside main sphere)
+        createPlanetaryOrbitsAround(object);
+
         // Pick a tire-like mesh for warning blink (fallback: first child mesh)
     let candidate = null;
     object.traverse((child) => {
@@ -2222,6 +2276,13 @@ function animate() {
         const blinkSpeed = 60; // Same speed as corner indicators
         const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
         tooltipIcon.style.opacity = opacity;
+    }
+    
+    // Spin planetary orbit parents
+    if (orbitParents.length > 0) {
+        orbitParents.forEach(({ parent, spinSpeed }) => {
+            parent.rotation.y += spinSpeed * 0.01; // subtle per-frame spin
+        });
     }
     
     // Update text decoder animation
