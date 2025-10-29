@@ -581,6 +581,7 @@ let warningMesh = null;
 let warningOriginalEmissive = null;
 let warningOriginalEmissiveIntensity = 0;
 
+
 // Text decoding animation
 let currentText = '';
 let targetText = '';
@@ -1999,10 +2000,10 @@ loader.load(
             }
         }
     });
-    // Attach to the same parent as the model so it follows all transforms
-    object.add(ghostGroup);
+        // Attach to the same parent as the model so it follows all transforms
+        object.add(ghostGroup);
 
-    // Pick a tire-like mesh for warning blink (fallback: first child mesh)
+        // Pick a tire-like mesh for warning blink (fallback: first child mesh)
     let candidate = null;
     object.traverse((child) => {
         if (child.isMesh) {
