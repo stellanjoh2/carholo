@@ -572,6 +572,8 @@ let lockRingAnim = {
     toOpacity: 0.0
 };
 
+let infoPanelEnabled = true;
+
 function buildLockRingGeometry(baseRadius, thicknessRatio, segments = 32) {
     const outer = baseRadius;
     const inner = baseRadius * (1.0 - Math.max(0, Math.min(1, thicknessRatio)));
@@ -670,9 +672,13 @@ function createPlanetaryOrbitsAround(object) {
     // Compute a comfortable radius based on model size
     const modelBox = new THREE.Box3().setFromObject(object);
     const modelSize = modelBox.getSize(new THREE.Vector3());
+    const modelCenter = modelBox.getCenter(new THREE.Vector3());
     const maxDim = Math.max(modelSize.x, modelSize.y, modelSize.z);
     const modelRadius = maxDim * 0.65;
     const sphereRadius = maxDim * 0.8; // matches wireframe sphere radius
+    
+    // Slightly lift and center the orbit group above the podium to avoid intersections
+    orbitsGroup.position.set(modelCenter.x, modelCenter.y + modelSize.y * 0.05, modelCenter.z);
 
     // Helper to create one orbit with dashes
     function makeOrbit(radius, colorHex, tiltEuler, dashCount, spinSpeed) {
@@ -709,9 +715,10 @@ function createPlanetaryOrbitsAround(object) {
     }
 
     // Build 3 differently tilted orbits; ensure they never intersect the wireframe sphere
-    const r1 = sphereRadius * 0.96; // closer to the wireframe sphere, but no intersection
-    const r2 = sphereRadius * 0.90;
-    const r3 = sphereRadius * 0.84;
+    // Push outward ~15% more, clamped to stay inside the wireframe sphere
+    const r1 = sphereRadius * 0.995; // was 0.98
+    const r2 = sphereRadius * 0.965; // ~0.93 * 1.15 (clamped)
+    const r3 = sphereRadius * 0.94;  // ~0.88 * 1.15 (clamped)
     makeOrbit(r1, 0xffa500, new THREE.Euler(0.45, 0.0, 0.12), 64, 0.12);
     makeOrbit(r2, 0xffd700, new THREE.Euler(0.1, 0.6, -0.2), 96, -0.08);
     makeOrbit(r3, 0xff8844, new THREE.Euler(-0.35, -0.15, 0.4), 128, 0.06);
@@ -917,6 +924,33 @@ function initializeFullscreen() {
     });
     
     console.log('Fullscreen functionality initialized (J key)');
+}
+
+function initializeInfoToggle() {
+    const infoBtn = document.getElementById('info-button');
+    const infoIcon = document.getElementById('info-icon');
+    const partContainer = document.getElementById('part-container');
+    if (!infoBtn || !infoIcon || !partContainer) return;
+    infoIcon.innerHTML = '<i data-feather="info"></i>';
+    if (typeof feather !== 'undefined') { try { feather.replace(); } catch (_) {} }
+    const updateButtonState = () => {
+        if (infoPanelEnabled) {
+            infoBtn.classList.remove('off');
+        } else {
+            infoBtn.classList.add('off');
+        }
+    };
+    updateButtonState();
+    infoBtn.addEventListener('click', () => {
+        infoPanelEnabled = !infoPanelEnabled;
+        updateButtonState();
+        if (!infoPanelEnabled) {
+            partContainer.classList.remove('visible');
+        } else {
+            // If currently hovering, show immediately
+            if (hoveredMesh) partContainer.classList.add('visible');
+        }
+    });
 }
 
 // Utility function to capitalize first letter
@@ -1281,8 +1315,8 @@ function onMouseMove(event) {
                         // No color class added - stays default yellow
                     }
                     
-                    // Show container
-                    if (partContainerEl) {
+                    // Show container if info panel is enabled
+                    if (partContainerEl && infoPanelEnabled) {
                         partContainerEl.classList.add('visible');
                     }
                     
@@ -3006,6 +3040,8 @@ function animate() {
             const msize = mb.getSize(new THREE.Vector3());
             const mcenter = mb.getCenter(new THREE.Vector3());
             lockRing.position.set(mcenter.x, mcenter.y, mcenter.z);
+            // Sync ring rotation with car so they rotate together
+            lockRing.rotation.y = porscheModel.rotation.y;
         }
     }
 
@@ -3291,7 +3327,8 @@ function resetHoverStates() {
 setTimeout(resetHoverStates, 1000);
 
 // Initialize fullscreen functionality
-initializeFullscreen();
+    initializeFullscreen();
+    initializeInfoToggle();
 
 animate();
 

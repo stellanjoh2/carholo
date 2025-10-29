@@ -270,6 +270,27 @@
         #fullscreen-button:hover #fullscreen-icon svg {
             stroke: #ffaa00; /* Slightly brighter yellow on hover */
         }
+
+        /* Info toggle button */
+        #info-button {
+            position: fixed;
+            top: 50px;
+            right: 160px; /* left of fullscreen */
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        #info-button:hover { transform: scale(1.1); }
+        #info-icon, #info-icon svg { width: 36px; height: 36px; }
+        #info-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
+        #info-button.off #info-icon svg { stroke: #ff4444; }
         
         @keyframes hardBlink {
             0%, 50% { opacity: 1; }
@@ -399,6 +420,9 @@
     </div>
     <div id="music-player">
         <div id="music-icon"></div>
+    </div>
+    <div id="info-button">
+        <div id="info-icon"></div>
     </div>
     <div id="fullscreen-button">
         <div id="fullscreen-icon"></div>
