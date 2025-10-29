@@ -577,6 +577,7 @@ function startBoundingBoxAnimation() {
 }
 // screenOutline removed completely
 let enableScreenOutline = false; // feature toggle
+let modelMaxDimension = 1; // updated after model load for scale-aware filters
 let warningMesh = null;
 let warningOriginalEmissive = null;
 let warningOriginalEmissiveIntensity = 0;
@@ -610,6 +611,7 @@ let textDecodeSpeed = 3; // characters per frame
 
 // Planetary orbits (dashed ring dashes) around car
 const orbitsGroup = new THREE.Group();
+orbitsGroup.userData.isHelper = true;
 let orbitParents = [];
 scene.add(orbitsGroup);
 
@@ -666,6 +668,7 @@ function createPlanetaryOrbitsAround(object) {
 
 // Scattered crosses around the car near the rings
 const scatteredCrossGroup = new THREE.Group();
+scatteredCrossGroup.userData.isHelper = true;
 let scatteredCrosses = [];
 scene.add(scatteredCrossGroup);
 
@@ -913,14 +916,45 @@ function onMouseMove(event) {
     
     if (porscheModel) {
         const intersects = raycaster.intersectObject(porscheModel, true);
+
+        // Helper: determine if an object is a valid car part to hover
+        function isValidHoverTarget(obj) {
+            // Must be a Mesh
+            if (!obj || !obj.isMesh) return false;
+            // Exclude helpers by userData and known groups
+            let n = obj;
+            while (n) {
+                if (n.userData?.isHelper) return false;
+                const nm = (n.name || '').toLowerCase();
+                if (nm.includes('reference') || nm.includes('ghostpointcloud') || nm.includes('bounding') || nm.includes('hoverlight') || nm.includes('podium')) return false;
+                if (n === orbitsGroup || n === scatteredCrossGroup) return false;
+                n = n.parent;
+            }
+            // Exclude tiny degenerate parts near origin
+            const bbox = new THREE.Box3().setFromObject(obj);
+            const size = bbox.getSize(new THREE.Vector3());
+            const center = bbox.getCenter(new THREE.Vector3());
+            const largest = Math.max(size.x, size.y, size.z);
+            const nearOrigin = center.length() < modelMaxDimension * 0.05;
+            const verySmall = largest < modelMaxDimension * 0.03;
+            // Also check geometry vertex count
+            const geom = obj.geometry;
+            const vertCount = geom?.attributes?.position?.count || 0;
+            const tooFewVerts = vertCount > 0 && vertCount < 30;
+            if ((nearOrigin && verySmall) || tooFewVerts) return false; // skip micro/stray bits
+            return true;
+        }
+
+        // Pick first intersect that passes filter
+        const validIntersect = intersects.find(hit => isValidHoverTarget(hit.object));
         const crossEl = document.getElementById('cursor-cross');
         if (crossEl) {
             // Cursor color is now managed by status-based classes
             // No need to add 'hovering' class here
         }
         
-        if (intersects.length > 0) {
-            const currentHovered = intersects[0].object;
+        if (validIntersect) {
+            const currentHovered = validIntersect.object;
             
             // Skip hover detection for ground/plateau mesh
             if (currentHovered.name && currentHovered.name.toLowerCase().includes('plateau')) {
@@ -1816,7 +1850,12 @@ loader.load(
             'steering': 'Steering Wheel',
             'pedal': 'Pedal Assembly',
             'console': 'Center Console',
+            // Doors (prioritize over drivetrain terms)
             'door': 'Door Panel',
+            'porte': 'Door Panel',
+            'portiere': 'Door Panel',
+            'portière': 'Door Panel',
+            'porteri': 'Door Panel',
             'handle': 'Door Handle',
             'mirror': 'Side Mirror',
             
@@ -1834,6 +1873,9 @@ loader.load(
             // Transmission
             'transmission': 'Transmission',
             'gearbox': 'Gearbox',
+            'levier': 'Gearbox',
+            'levier de vitesse': 'Gearbox',
+            'levier-vitesse': 'Gearbox',
             'clutch': 'Clutch Assembly',
             'flywheel': 'Flywheel',
             'differential': 'Differential',
@@ -1897,6 +1939,12 @@ loader.load(
             'airbag': 'Airbag System'
         };
         
+        // Precompute model bounds for naming heuristics
+        const namingBBox = new THREE.Box3().setFromObject(object);
+        const namingCenter = namingBBox.getCenter(new THREE.Vector3());
+        const namingSize = namingBBox.getSize(new THREE.Vector3());
+        const namingMax = Math.max(namingSize.x, namingSize.y, namingSize.z);
+        
         // Apply English names to car parts
         object.traverse((child) => {
             if (child.isMesh && child.name) {
@@ -1908,14 +1956,31 @@ loader.load(
                     .replace(/[0-9_\-\.]/g, ' ')
                     .replace(/\b(mesh|part|object|group|node|porsche|911)\b/g, '')
                     .trim();
+                const deaccentName = (originalName || '')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[0-9_\-\.]/g, ' ');
+                const deaccentClean = (cleanName || '')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                 
                 // Find matching part name (try both original and cleaned name)
                 for (const [key, englishName] of Object.entries(partNameMap)) {
-                    if (originalName.includes(key) || cleanName.includes(key)) {
+                    const k = (key || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    if (originalName.includes(key) || cleanName.includes(key) || deaccentName.includes(k) || deaccentClean.includes(k)) {
                         child.name = englishName;
-                        console.log(`Renamed: "${child.name}" -> "${englishName}"`);
+                        console.log(`Renamed: "${originalName}" -> "${englishName}"`);
                         renamed = true;
                         break;
+                    }
+                }
+                // If we matched Gearbox but the part looks like a side door, override to Door Panel
+                if (renamed && child.name === 'Gearbox') {
+                    const bbox = new THREE.Box3().setFromObject(child);
+                    const c = bbox.getCenter(new THREE.Vector3()).sub(namingCenter);
+                    const s = bbox.getSize(new THREE.Vector3());
+                    const side = Math.abs(c.x) > namingMax * 0.20; // left/right side of car
+                    const tallThin = s.y > s.x * 1.1 && s.z < namingMax * 0.6;
+                    if (side && tallThin) {
+                        child.name = 'Door Panel';
                     }
                 }
                 
@@ -2085,9 +2150,13 @@ loader.load(
                 envMapIntensity: 0.45
             });
             podiumMesh.material.needsUpdate = true;
-            podiumMesh.receiveShadow = false;
+            podiumMesh.receiveShadow = true; // allow floor to receive shadows
             podiumMesh.castShadow = false;
             podiumMesh.userData.isPodium = true;
+
+            // Podium height restored to original (no lift)
+            // If the podium was previously lifted in a prior session, ensure no offset is applied here
+            podiumMesh.updateMatrixWorld(true);
 
             console.log('[Podium]', {
                 name: podiumMesh.name,
@@ -2095,12 +2164,74 @@ loader.load(
             });
         })(object);
         
+        // Wheel lift removed per request - keep original wheel positions
+
+        // Nudge stray tiny origin bits downward so they don't hover above the floor
+        (function sinkStrayOriginBits(root) {
+            const modelBBox = new THREE.Box3().setFromObject(root);
+            const modelSize = modelBBox.getSize(new THREE.Vector3());
+            const down = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.30; // push far below floor
+            root.traverse((node) => {
+                if (!(node.isMesh || node.isPoints)) return;
+                // Skip helpers/podium/wheels
+                if (node.userData?.isHelper) return;
+                const nm = (node.name || '').toLowerCase();
+                if (nm.includes('podium') || nm.includes('floor') || nm.includes('base')) return;
+                const bbox = new THREE.Box3().setFromObject(node);
+                const sz = bbox.getSize(new THREE.Vector3());
+                const largest = Math.max(sz.x, sz.y, sz.z);
+                const center = bbox.getCenter(new THREE.Vector3());
+                const nearOrigin = center.length() < Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.05;
+                const small = largest < Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.03;
+                const vertCount = node.geometry?.attributes?.position?.count || 0;
+                if ((nearOrigin && small) || (vertCount > 0 && vertCount < 30)) {
+                    // Move in world space to avoid parent transform side-effects
+                    const worldPos = new THREE.Vector3();
+                    node.getWorldPosition(worldPos);
+                    worldPos.y -= down;
+                    if (node.parent) {
+                        const localPos = node.parent.worldToLocal(worldPos.clone());
+                        node.position.copy(localPos);
+                    } else {
+                        node.position.copy(worldPos);
+                    }
+                    node.updateMatrixWorld(true);
+                    node.userData.isSunk = true;
+                }
+            });
+        })(object);
+        
         scene.add(object);
         porscheModel = object;
+        
+        // Spotlight that only lights the car and floor (layers), casting shadows onto the podium
+        (function addShadowOnlySpotlight() {
+            const spot = new THREE.SpotLight(0xffffff, 0.55);
+            spot.castShadow = true;
+            spot.angle = 0.9;
+            spot.penumbra = 0.5;
+            spot.decay = 2.0;
+            spot.shadow.mapSize.set(2048, 2048);
+            spot.shadow.bias = -0.0005;
+            // Position above and slightly in front of the car
+            const mSize = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
+            const mMax = Math.max(mSize.x, mSize.y, mSize.z);
+            spot.position.set(0, mMax * 1.6, mMax * 0.8);
+            spot.target = object;
+            scene.add(spot);
+            scene.add(spot.target);
+            // Use layer 1 for shadow/lighting so nothing else is affected
+            spot.layers.set(1);
+            object.traverse((n) => { if (n.isMesh) { n.layers.enable(1); n.castShadow = true; } });
+            // Ensure podium receives and is on the light layer
+            const podium = scene.getObjectByName('Podium');
+            if (podium && podium.isMesh) { podium.layers.enable(1); podium.receiveShadow = true; }
+        })();
         
         // Adjust camera to view the car
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
+        modelMaxDimension = maxDim;
         
         // Create wireframed sphere around the car
         const sphereRadius = maxDim * 0.8; // Slightly larger than the car
@@ -2118,6 +2249,7 @@ loader.load(
         // Position sphere at the same center as the car
         sphereWireframe.position.copy(object.position);
         sphereWireframe.name = 'referenceSphere';
+        sphereWireframe.userData.isHelper = true;
         scene.add(sphereWireframe);
         camera.position.set(maxDim * 0.3825, maxDim * 0.3078, maxDim * 0.3825); // Even closer and even lower
         controls.target = new THREE.Vector3(0, 0, 0);
@@ -2194,12 +2326,13 @@ loader.load(
     // Ghost point cloud duplicate of the car
     const ghostGroup = new THREE.Group();
     ghostGroup.name = 'ghostPointCloud';
+    ghostGroup.userData.isHelper = true;
     const ghostMaterial = new THREE.PointsMaterial({
         color: 0xffd700, // neon yellow
-        size: 0.01,
+        size: 0.02,
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.28,
         depthWrite: false,
         blending: THREE.AdditiveBlending
     });
@@ -2222,6 +2355,17 @@ loader.load(
                 }
                 const ghostGeom = new THREE.BufferGeometry();
                 ghostGeom.setAttribute('position', new THREE.BufferAttribute(sampled, 3));
+
+                // Skip degenerate/tiny meshes near origin to avoid glowing specks
+                const bbox = new THREE.Box3().setFromObject(child);
+                const sz = bbox.getSize(new THREE.Vector3());
+                const largest = Math.max(sz.x, sz.y, sz.z);
+                const center = bbox.getCenter(new THREE.Vector3());
+                const nearOrigin = center.length() < modelMaxDimension * 0.03;
+                if (largest < modelMaxDimension * 0.01 && nearOrigin) {
+                    return;
+                }
+
                 const points = new THREE.Points(ghostGeom, ghostMaterial.clone());
                 points.position.copy(child.position);
                 points.rotation.copy(child.rotation);
@@ -2229,6 +2373,7 @@ loader.load(
                 points.matrix.copy(child.matrix);
                 points.matrixAutoUpdate = false;
                 points.frustumCulled = true;
+                points.userData.isHelper = true;
                 ghostGroup.add(points);
             }
         }
