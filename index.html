@@ -325,6 +325,7 @@
             isolation: isolate; /* create new stacking context for backdrop-filter */
             transform: scale(0.84); /* 5% larger than 0.8 */
             transform-origin: top left;
+            pointer-events: none; /* never block mouse */
         }
         
         #part-container.visible {
@@ -375,7 +376,7 @@
             font-family: 'Space Mono', 'Courier New', monospace;
             font-weight: 100;
             line-height: 1.5;
-            pointer-events: auto; /* allow scrolling */
+            pointer-events: none; /* never block mouse */
             z-index: 1;
             max-width: 40vw;
             max-height: 70vh;
