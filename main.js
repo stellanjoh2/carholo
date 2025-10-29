@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+
+// Shared glass material to ensure identical appearance across all car glass parts
+let __sharedGlassMaterial = null;
+// Dedicated windshield glass (slightly more transparent)
+let __windshieldGlassMaterial = null;
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -2046,6 +2051,7 @@ loader.load(
         });
 
         // Identify and convert ONLY window/glass materials (by name only, not color)
+        const glassMeshes = [];
         object.traverse((child) => {
             if (child.isMesh) {
                 const name = child.name.toLowerCase();
@@ -2063,21 +2069,33 @@ loader.load(
                 if (isGlass) {
                     console.log('Converting to glass:', child.name, 'Material:', child.material?.name);
                     
-                    // Create new glass material
-                    const glassMaterial = new THREE.MeshPhysicalMaterial({
-                        color: 0xffffff,
-                        metalness: 0,
-                        roughness: 0.05,
-                        transmission: 0.95, // Transparency
-                        opacity: 0.2,
-                        transparent: true,
-                        side: THREE.DoubleSide,
-                        clearcoat: 1.0,
-                        clearcoatRoughness: 0.05,
-                        ior: 1.5, // Index of refraction for glass
-                        envMapIntensity: 15.0, // Very strong glass reflections
-                        envMap: scene.environment, // Apply current environment map
-                    });
+                    // Create or reuse a shared glass material so all glass looks identical
+                    if (!__sharedGlassMaterial) {
+                        // Simplified: use same base as car body shader, just more transparent and double-sided
+                        __sharedGlassMaterial = new THREE.MeshPhysicalMaterial({
+                            color: 0x333333, // match car base color tone
+                            opacity: 0.52, // ~20% more transparent than 0.65
+                            transparent: true,
+                            side: THREE.DoubleSide,
+                            roughness: 0.0,
+                            metalness: 1.0,
+                            envMapIntensity: 1.0,
+                            envMap: scene.environment,
+                            clearcoat: 1.0,
+                            clearcoatRoughness: 0.0,
+                            sheen: 2.0,
+                            sheenRoughness: 0.3,
+                            sheenColor: new THREE.Color(0xff6600),
+                            iridescence: 1.0,
+                            iridescenceIOR: 1.3,
+                            iridescenceThicknessRange: [100, 500],
+                            depthWrite: false
+                        });
+                    } else {
+                        __sharedGlassMaterial.envMap = scene.environment;
+                        __sharedGlassMaterial.opacity = 0.52;
+                        __sharedGlassMaterial.needsUpdate = true;
+                    }
                     
                     // Dispose old material
                     if (Array.isArray(child.material)) {
@@ -2086,11 +2104,55 @@ loader.load(
                         child.material.dispose();
                     }
                     
-                    child.material = glassMaterial;
+                    // Use one unified material for all glass (including windshield)
+                    child.material = __sharedGlassMaterial;
                     child.material.needsUpdate = true;
+                    // Ensure glass draws after opaque to avoid OIT artifacts
+                    child.renderOrder = 1000;
+                    child.castShadow = false;
+                    child.receiveShadow = false;
+                    // Mark and normalize
+                    child.userData.isGlass = true;
+                    const lname = (child.name || '').toLowerCase();
+                    if (lname.includes('windshield') || lname.includes('windscreen')) {
+                        child.userData.displayName = 'Window Glass';
+                    }
+
+                    glassMeshes.push(child);
                 }
             }
         });
+
+        // De-duplicate overlapping glass shells (e.g., windshield inner/outer) to avoid double darkening
+        if (glassMeshes.length > 1) {
+            const groups = new Map();
+            const tmpBox = new THREE.Box3();
+            const tmpCenter = new THREE.Vector3();
+            glassMeshes.forEach((m) => {
+                tmpBox.setFromObject(m);
+                const size = tmpBox.getSize(new THREE.Vector3());
+                tmpBox.getCenter(tmpCenter);
+                const key = [
+                    Math.round(tmpCenter.x * 50) / 50,
+                    Math.round(tmpCenter.y * 50) / 50,
+                    Math.round(tmpCenter.z * 50) / 50,
+                    Math.round(size.x * 50) / 50,
+                    Math.round(size.y * 50) / 50,
+                    Math.round(size.z * 50) / 50
+                ].join('|');
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(m);
+            });
+            groups.forEach((arr) => {
+                if (arr.length > 1) {
+                    // Keep the first visible, hide the rest to prevent layered transparency
+                    for (let i = 1; i < arr.length; i++) {
+                        arr[i].visible = false;
+                        arr[i].userData.hiddenAsDuplicateGlass = true;
+                    }
+                }
+            });
+        }
         
         // Convert materials to physical materials for reflections
         object.traverse((child) => {
@@ -2098,7 +2160,8 @@ loader.load(
                 child.castShadow = true;
                 child.receiveShadow = true;
                 
-                if (child.material && !child.name.toLowerCase().includes('glass')) {
+                // Do NOT overwrite any glass we just set up
+                if (child.material && !child.userData.isGlass) {
                     // Convert to MeshPhysicalMaterial with black, slightly transparent, but highly reflective
                     const physicalMaterial = new THREE.MeshPhysicalMaterial({
                         color: 0x333333, // Dark gray instead of black for better visibility
