@@ -29,6 +29,8 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
+// Ensure camera (and its children like UI elements) are part of the scene graph
+scene.add(camera);
 camera.position.set(0, 5, 10);
 
 console.log('Creating renderer...');
@@ -573,6 +575,94 @@ let lockRingAnim = {
 };
 
 let infoPanelEnabled = true;
+
+// Compute a robust local-space center for a mesh suitable for attaching hover lights
+function getStableLocalCenter(targetMesh) {
+    const tmpBox = new THREE.Box3();
+    const tmpVec = new THREE.Vector3();
+    // 1) Try world bbox center from full object, then convert to local
+    tmpBox.setFromObject(targetMesh);
+    let worldCenter = tmpBox.getCenter(new THREE.Vector3());
+    if (!(Number.isFinite(worldCenter.x) && Number.isFinite(worldCenter.y) && Number.isFinite(worldCenter.z))) {
+        // 2) Fallback to geometry bbox center
+        if (targetMesh.geometry) {
+            targetMesh.geometry.computeBoundingBox();
+            const gb = targetMesh.geometry.boundingBox;
+            if (gb) {
+                worldCenter = gb.getCenter(new THREE.Vector3());
+                targetMesh.localToWorld(worldCenter);
+            }
+        }
+    }
+    if (!(Number.isFinite(worldCenter.x) && Number.isFinite(worldCenter.y) && Number.isFinite(worldCenter.z))) {
+        // 3) Fallback to world position
+        worldCenter = targetMesh.getWorldPosition(new THREE.Vector3());
+    }
+    // Convert to local
+    const localCenter = targetMesh.worldToLocal(worldCenter.clone());
+    if (!(Number.isFinite(localCenter.x) && Number.isFinite(localCenter.y) && Number.isFinite(localCenter.z))) {
+        // 4) Final fallback: origin
+        return tmpVec.set(0, 0, 0);
+    }
+    return localCenter;
+}
+
+// 3D UI: spinning cog icon (bottom-left), rendered as textured plane parented to camera
+let uiCogMesh = null;
+let uiCogTargetPx = 128; // 128x128 px requested
+function initializeUICog() {
+    if (uiCogMesh) return;
+    try {
+        // Inline SVG monitor/computer icon (Feather-like), to avoid external loads
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>';
+        const dataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = uiCogTargetPx;
+            canvas.height = uiCogTargetPx;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw with padding so the icon never crops at edges
+            const pad = Math.floor(canvas.width * 0.08);
+            ctx.drawImage(img, pad, pad, canvas.width - pad * 2, canvas.height - pad * 2);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            // Keep texture static; we'll rotate mesh in 3D
+            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
+            const geo = new THREE.PlaneGeometry(1, 1);
+            uiCogMesh = new THREE.Mesh(geo, mat);
+            // Parent to camera so it’s a 3D UI element
+            camera.add(uiCogMesh);
+            uiCogMesh.position.set(0, 0, -1); // will be updated in layout
+            uiCogMesh.renderOrder = 2000;
+            uiCogMesh.frustumCulled = false;
+        };
+        img.src = dataUrl;
+    } catch (_) {
+        // No-op fallback
+    }
+}
+
+function layoutUICog() {
+    if (!uiCogMesh) return;
+    // keep at constant 128px size and bottom-left with 24px margin
+    const d = 1; // fixed distance in camera space
+    uiCogMesh.position.z = -d;
+    const vFov = THREE.MathUtils.degToRad(camera.fov || 50);
+    const viewH = 2 * Math.tan(vFov / 2) * d;
+    const viewW = viewH * (camera.aspect || (window.innerWidth / Math.max(1, window.innerHeight)));
+    const pxH = viewH / Math.max(1, window.innerHeight);
+    const targetHWorld = pxH * uiCogTargetPx;
+    const targetWWorld = targetHWorld; // square
+    uiCogMesh.scale.set(targetWWorld, targetHWorld, 1);
+    // Match other UI vertical padding (~50px) and consistent side margin
+    const marginPx = 50;
+    const offsetX = (marginPx - window.innerWidth / 2 + uiCogTargetPx / 2) * (viewW / Math.max(1, window.innerWidth));
+    const offsetY = (-window.innerHeight / 2 + marginPx + uiCogTargetPx / 2) * (viewH / Math.max(1, window.innerHeight));
+    uiCogMesh.position.x = offsetX;
+    uiCogMesh.position.y = offsetY;
+}
 
 function buildLockRingGeometry(baseRadius, thicknessRatio, segments = 32) {
     const outer = baseRadius;
@@ -1508,8 +1598,8 @@ function onMouseMove(event) {
                         if (hoverLightOwner !== hoveredMesh || (now - hoverLightLastUpdate) > 100) {
                             hoverPointLight.intensity = lightIntensity;
                             hoverPointLight.distance = lightDistance;
-                            // Place at the local center of the part
-                            const localCenter = hoveredMesh.worldToLocal(worldCenter.clone());
+                            // Place at a robust local center (brute-force checked)
+                            const localCenter = getStableLocalCenter(hoveredMesh);
                             hoverPointLight.position.copy(localCenter);
                             hoverLightLastUpdate = now;
                         }
@@ -3045,6 +3135,15 @@ function animate() {
         }
     }
 
+    // Spin and layout the 3D UI cog
+    if (uiCogMesh) {
+        try {
+            // Rotate into the screen around its local Y axis (inward spin)
+            uiCogMesh.rotation.y += 0.05;
+            layoutUICog();
+        } catch (_) {}
+    }
+
     // Floor light color synced to hovered object health (static, no blinking)
     // DISABLED - was causing wheels to glow constantly
     // if (warningMesh && warningMesh.material) {
@@ -3329,6 +3428,7 @@ setTimeout(resetHoverStates, 1000);
 // Initialize fullscreen functionality
     initializeFullscreen();
     initializeInfoToggle();
+    initializeUICog();
 
 animate();
 
