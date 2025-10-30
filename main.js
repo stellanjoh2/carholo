@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
 // Shared glass material to ensure identical appearance across all car glass parts
 let __sharedGlassMaterial = null;
@@ -575,6 +576,8 @@ let lockRingAnim = {
 };
 
 let infoPanelEnabled = true;
+// Toggle for spawning a hover point light (temporarily disabled per request)
+const ENABLE_HOVER_LIGHT = false;
 
 // Compute a robust local-space center for a mesh suitable for attaching hover lights
 function getStableLocalCenter(targetMesh) {
@@ -663,6 +666,8 @@ function layoutUICog() {
     uiCogMesh.position.x = offsetX;
     uiCogMesh.position.y = offsetY;
 }
+
+//
 
 function buildLockRingGeometry(baseRadius, thicknessRatio, segments = 32) {
     const outer = baseRadius;
@@ -1564,44 +1569,39 @@ function onMouseMove(event) {
                         // Start bounding box animation
                         startBoundingBoxAnimation();
                         
-                        // Create or update a soft point light matching part color
-                        // Light range scales with the largest dimension of the hovered part
-                        const worldBbox = new THREE.Box3().setFromObject(hoveredMesh);
-                        const worldCenter = worldBbox.getCenter(new THREE.Vector3());
-                        const worldSize = worldBbox.getSize(new THREE.Vector3());
-                        const largestDim = Math.max(worldSize.x, worldSize.y, worldSize.z);
-                        // Tighter range to reduce over-illumination
-                        const lightDistance = Math.max(2.0, largestDim * 4.0);
-                        const lightIntensity = 1.6; // still bright, but a bit gentler
-
-                        // Ensure no stray hover lights exist before creating/using one
-                        cleanupHoverLights();
-                        if (!hoverPointLight) {
-                            hoverPointLight = new THREE.PointLight(statusColor, lightIntensity, lightDistance);
-                            hoverPointLight.castShadow = false;
-                            hoverPointLight.decay = 2.0; // stronger falloff so light doesn't spill far
-                            hoverPointLight.userData.isHoverLight = true;
-                            hoverPointLight.name = 'HoverLight';
-                        }
-                        // Re-parent light to hovered mesh so it moves with the part
-                        if (hoverPointLight.parent !== hoveredMesh) {
-                            // Detach from previous parent, then attach to hovered mesh
-                            if (hoverPointLight.parent) hoverPointLight.parent.remove(hoverPointLight);
-                            hoveredMesh.add(hoverPointLight);
-                            hoverLightOwner = hoveredMesh;
-                        }
-                        // Always enforce correct color each frame (brute-force for correctness)
-                        hoverPointLight.color.setHex(statusColor);
-
-                        // Throttle only position/range/intensity to ~10Hz unless owner changes
-                        const now = performance.now();
-                        if (hoverLightOwner !== hoveredMesh || (now - hoverLightLastUpdate) > 100) {
-                            hoverPointLight.intensity = lightIntensity;
-                            hoverPointLight.distance = lightDistance;
-                            // Place at a robust local center (brute-force checked)
-                            const localCenter = getStableLocalCenter(hoveredMesh);
-                            hoverPointLight.position.copy(localCenter);
-                            hoverLightLastUpdate = now;
+                        if (ENABLE_HOVER_LIGHT) {
+                            // Create or update a soft point light matching part color
+                            // Light range scales with the largest dimension of the hovered part
+                            const worldBbox = new THREE.Box3().setFromObject(hoveredMesh);
+                            const worldCenter = worldBbox.getCenter(new THREE.Vector3());
+                            const worldSize = worldBbox.getSize(new THREE.Vector3());
+                            const largestDim = Math.max(worldSize.x, worldSize.y, worldSize.z);
+                            const lightDistance = Math.max(2.0, largestDim * 4.0);
+                            const lightIntensity = 1.6;
+                            cleanupHoverLights();
+                            if (!hoverPointLight) {
+                                hoverPointLight = new THREE.PointLight(statusColor, lightIntensity, lightDistance);
+                                hoverPointLight.castShadow = false;
+                                hoverPointLight.decay = 2.0;
+                                hoverPointLight.userData.isHoverLight = true;
+                                hoverPointLight.name = 'HoverLight';
+                            }
+                            if (hoverPointLight.parent !== hoveredMesh) {
+                                if (hoverPointLight.parent) hoverPointLight.parent.remove(hoverPointLight);
+                                hoveredMesh.add(hoverPointLight);
+                                hoverLightOwner = hoveredMesh;
+                            }
+                            hoverPointLight.color.setHex(statusColor);
+                            const now = performance.now();
+                            if (hoverLightOwner !== hoveredMesh || (now - hoverLightLastUpdate) > 100) {
+                                hoverPointLight.intensity = lightIntensity;
+                                hoverPointLight.distance = lightDistance;
+                                const localCenter = getStableLocalCenter(hoveredMesh);
+                                hoverPointLight.position.copy(localCenter);
+                                hoverLightLastUpdate = now;
+                            }
+                        } else {
+                            cleanupHoverLights();
                         }
                         
                         // Create 3D crosses at the 8 corners of the bounding box
@@ -2519,6 +2519,85 @@ loader.load(
                 name: podiumMesh.name,
                 uuid: podiumMesh.uuid
             });
+
+            // Add realtime ground reflection above the podium
+            (function addGroundReflection(podium) {
+                try {
+                    const pb = new THREE.Box3().setFromObject(podium);
+                    const psize = pb.getSize(new THREE.Vector3());
+                    const pradius = Math.max(psize.x, psize.z) * 0.48; // slightly smaller than podium
+                    const center = pb.getCenter(new THREE.Vector3());
+                    const y = pb.max.y + Math.max(psize.y * 0.03, 0.02); // original higher offset above podium
+
+                    const mirrorGeom = new THREE.CircleGeometry(pradius, 128);
+                    const mirror = new Reflector(mirrorGeom, {
+                        clipBias: 0.003,
+                        textureWidth: Math.max(256, Math.floor(window.innerWidth * 0.35)),
+                        textureHeight: Math.max(256, Math.floor(window.innerHeight * 0.35)),
+                        color: 0xffffff,
+                        multisample: 2
+                    });
+                    // Convert world position to podium local since we'll parent to podium
+                    const worldPos = new THREE.Vector3(center.x, y, center.z);
+                    const localPos = podium.worldToLocal(worldPos.clone());
+                    mirror.position.copy(localPos);
+                    // Inherit podium orientation (keep mirror flat on podium surface)
+                    mirror.rotation.set(0, 0, 0);
+                    mirror.material.transparent = true;
+                    mirror.material.opacity = 0.10; // original base
+                    mirror.material.depthWrite = false;
+                    mirror.renderOrder = 999; // ensure drawn above the podium
+                    mirror.name = 'GroundReflection';
+
+                    // Keep helpers from showing too strongly by slightly dimming env
+                    if (mirror.material.uniforms && mirror.material.uniforms.color)
+                        mirror.material.uniforms.color.value.multiplyScalar(0.7);
+
+                    // Add radial alpha falloff so reflection darkens toward the rim
+                    (function addRadialAlpha(m) {
+                        const size = 512;
+                        const c = document.createElement('canvas');
+                        c.width = size; c.height = size;
+                        const ctx = c.getContext('2d');
+                        const grd = ctx.createRadialGradient(size/2, size/2, size*0.1, size/2, size/2, size*0.5);
+                        // center strong, edge faint
+                        grd.addColorStop(0.0, 'rgba(255,255,255,0.9)');
+                        grd.addColorStop(0.45, 'rgba(255,255,255,0.4)');
+                        grd.addColorStop(1.0, 'rgba(255,255,255,0.02)');
+                        ctx.fillStyle = grd;
+                        ctx.fillRect(0,0,size,size);
+                        const alphaTex = new THREE.CanvasTexture(c);
+                        alphaTex.colorSpace = THREE.SRGBColorSpace;
+                        m.alphaMap = alphaTex;
+                        m.needsUpdate = true;
+                    })(mirror.material);
+
+                    // Attach to podium so it follows any transforms exactly
+                    podium.add(mirror);
+                    mirror.visible = true; // enable roughness-style reflector
+
+                    // Add a semi-transparent black cylinder just above the reflector
+                    try {
+                        const cylRadiusTop = pradius * 0.98;
+                        const cylRadiusBottom = pradius * 0.98;
+                        const cylHeight = Math.max(psize.y * 0.02, 0.01); // thin
+                        const cylGeom = new THREE.CylinderGeometry(cylRadiusTop, cylRadiusBottom, cylHeight, 128, 1, true);
+                        const cylMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+                        const darkCyl = new THREE.Mesh(cylGeom, cylMat);
+                        darkCyl.position.copy(mirror.position.clone());
+                        darkCyl.position.y += cylHeight * 0.5; // place just above reflector
+                        darkCyl.renderOrder = 1000;
+                        darkCyl.name = 'PodiumDarkCylinder';
+                        // remove/hide dark cylinder for this pass
+                        podium.add(darkCyl);
+                        darkCyl.visible = false;
+                    } catch (e) {
+                        console.warn('Dark cylinder add failed:', e);
+                    }
+                } catch (e) {
+                    console.warn('Ground reflection failed:', e);
+                }
+            })(podiumMesh);
         })(object);
 
         // Replace heavy right-rear wheel with a clone of the left-rear wheel if confidently detected
@@ -3143,6 +3222,8 @@ function animate() {
             layoutUICog();
         } catch (_) {}
     }
+
+    //
 
     // Floor light color synced to hovered object health (static, no blinking)
     // DISABLED - was causing wheels to glow constantly
