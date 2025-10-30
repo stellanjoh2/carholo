@@ -449,8 +449,8 @@ const grainPass = new ShaderPass(grainShader);
 let grainTime = 0;
 composer.addPass(grainPass);
 
-// Simple ground fog using standard Three.js fog (more reliable)
-scene.fog = new THREE.FogExp2(0xff6600, 0.06); // Orange fog with 25% reduced density
+// Simple ground fog using standard Three.js fog (orange)
+scene.fog = new THREE.FogExp2(0xff6600, 0.06);
 
 // Panel background blur (shader-based, only under the info panel rect)
 const panelBlurShader = {
@@ -576,8 +576,11 @@ let lockRingAnim = {
 };
 
 let infoPanelEnabled = true;
-// Toggle for spawning a hover point light (temporarily disabled per request)
-const ENABLE_HOVER_LIGHT = false;
+// Toggle for spawning a hover point light
+const ENABLE_HOVER_LIGHT = true;
+let autoRotateEnabled = true;
+const ENABLE_SPOT_SHADOW = false; // turn off spotlight shadowcaster for performance
+const ENABLE_GHOST_POINTS = false; // disable duplicated car particles
 
 // Compute a robust local-space center for a mesh suitable for attaching hover lights
 function getStableLocalCenter(targetMesh) {
@@ -1045,6 +1048,24 @@ function initializeInfoToggle() {
             // If currently hovering, show immediately
             if (hoveredMesh) partContainer.classList.add('visible');
         }
+    });
+}
+
+function initializeRotateToggle() {
+    const btn = document.getElementById('rotate-button');
+    const icon = document.getElementById('rotate-icon');
+    if (!btn || !icon) return;
+    // Feather rotate icon replacement
+    icon.innerHTML = '<i data-feather="rotate-cw"></i>';
+    if (typeof feather !== 'undefined') { try { feather.replace(); } catch(_){} }
+    const sync = () => {
+        if (autoRotateEnabled) btn.classList.remove('paused');
+        else btn.classList.add('paused');
+    };
+    sync();
+    btn.addEventListener('click', () => {
+        autoRotateEnabled = !autoRotateEnabled;
+        sync();
     });
 }
 
@@ -2527,7 +2548,7 @@ loader.load(
                     const psize = pb.getSize(new THREE.Vector3());
                     const pradius = Math.max(psize.x, psize.z) * 0.48; // slightly smaller than podium
                     const center = pb.getCenter(new THREE.Vector3());
-                    const y = pb.max.y + Math.max(psize.y * 0.03, 0.02); // original higher offset above podium
+                    const y = pb.max.y + Math.max(psize.y * 0.015, 0.008) + 0.001; // lift ~1mm to avoid z-fighting when zoomed out
 
                     const mirrorGeom = new THREE.CircleGeometry(pradius, 128);
                     const mirror = new Reflector(mirrorGeom, {
@@ -2544,8 +2565,9 @@ loader.load(
                     // Inherit podium orientation (keep mirror flat on podium surface)
                     mirror.rotation.set(0, 0, 0);
                     mirror.material.transparent = true;
-                    mirror.material.opacity = 0.10; // original base
+                    mirror.material.opacity = 0.50; // increased strength per request
                     mirror.material.depthWrite = false;
+                    mirror.material.fog = false; // do not participate in scene fog
                     mirror.renderOrder = 999; // ensure drawn above the podium
                     mirror.name = 'GroundReflection';
 
@@ -2575,6 +2597,29 @@ loader.load(
                     // Attach to podium so it follows any transforms exactly
                     podium.add(mirror);
                     mirror.visible = true; // enable roughness-style reflector
+
+                    // Duplicate the reflector disc as a black overlay 1mm above
+                    try {
+                        const overlayGeom = mirrorGeom.clone();
+                        const overlayMat = new THREE.MeshBasicMaterial({
+                            color: 0x000000,
+                            transparent: true,
+                            opacity: 0.5,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const overlayDisc = new THREE.Mesh(overlayGeom, overlayMat);
+                        // Place at same local position as mirror, then nudge up 1mm
+                        overlayDisc.position.copy(mirror.position);
+                        overlayDisc.position.y += 0.001; // ~1 mm above reflector in local space
+                        overlayDisc.rotation.copy(mirror.rotation);
+                        overlayDisc.renderOrder = mirror.renderOrder + 1;
+                        overlayDisc.name = 'GroundReflectionOverlay';
+                        overlayDisc.visible = false; // hide for now
+                        podium.add(overlayDisc);
+                    } catch (e) {
+                        console.warn('Overlay disc add failed:', e);
+                    }
 
                     // Add a semi-transparent black cylinder just above the reflector
                     try {
@@ -2818,6 +2863,7 @@ loader.load(
         
         // Spotlight that only lights the car and floor (layers), casting shadows onto the podium
         (function addShadowOnlySpotlight() {
+            if (!ENABLE_SPOT_SHADOW) return; // disabled for performance
             const spot = new THREE.SpotLight(0xffffff, 0.55);
             spot.castShadow = true;
             spot.angle = 0.9;
@@ -3026,6 +3072,7 @@ loader.load(
     });
     // Attach to the same parent as the model so it follows all transforms
     object.add(ghostGroup);
+    if (!ENABLE_GHOST_POINTS) ghostGroup.visible = false;
 
         // Add planetary orbit dashes around the car (inside main sphere)
         createPlanetaryOrbitsAround(object);
@@ -3373,8 +3420,8 @@ function animate() {
     // Update controls
     controls.update();
     
-    // Auto-rotate the car model slowly
-    if (porscheModel) {
+    // Auto-rotate the car model slowly (toggleable)
+    if (porscheModel && autoRotateEnabled) {
         porscheModel.rotation.y += 0.005;
         
         // No fade effects - instant on/off handled in onMouseMove
@@ -3510,6 +3557,7 @@ setTimeout(resetHoverStates, 1000);
     initializeFullscreen();
     initializeInfoToggle();
     initializeUICog();
+    initializeRotateToggle();
 
 animate();
 

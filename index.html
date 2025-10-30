@@ -271,6 +271,27 @@
             stroke: #ffaa00; /* Slightly brighter yellow on hover */
         }
 
+        /* Rotate toggle button */
+        #rotate-button {
+            position: fixed;
+            top: 50px;
+            right: 230px; /* left of info */
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        #rotate-button:hover { transform: scale(1.1); }
+        #rotate-icon, #rotate-icon svg { width: 36px; height: 36px; }
+        #rotate-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
+        #rotate-button.paused #rotate-icon svg { stroke: #ff4444; }
+
         /* Info toggle button */
         #info-button {
             position: fixed;
@@ -421,6 +442,9 @@
     </div>
     <div id="music-player">
         <div id="music-icon"></div>
+    </div>
+    <div id="rotate-button">
+        <div id="rotate-icon"></div>
     </div>
     <div id="info-button">
         <div id="info-icon"></div>
