@@ -2565,7 +2565,7 @@ loader.load(
                     // Inherit podium orientation (keep mirror flat on podium surface)
                     mirror.rotation.set(0, 0, 0);
                     mirror.material.transparent = true;
-                    mirror.material.opacity = 0.50; // increased strength per request
+                    mirror.material.opacity = 0.04; // much darker reflection
                     mirror.material.depthWrite = false;
                     mirror.material.fog = false; // do not participate in scene fog
                     mirror.renderOrder = 999; // ensure drawn above the podium
@@ -2573,7 +2573,7 @@ loader.load(
 
                     // Keep helpers from showing too strongly by slightly dimming env
                     if (mirror.material.uniforms && mirror.material.uniforms.color)
-                        mirror.material.uniforms.color.value.multiplyScalar(0.7);
+                        mirror.material.uniforms.color.value.multiplyScalar(0.5);
 
                     // Add radial alpha falloff so reflection darkens toward the rim
                     (function addRadialAlpha(m) {
@@ -2583,9 +2583,9 @@ loader.load(
                         const ctx = c.getContext('2d');
                         const grd = ctx.createRadialGradient(size/2, size/2, size*0.1, size/2, size/2, size*0.5);
                         // center strong, edge faint
-                        grd.addColorStop(0.0, 'rgba(255,255,255,0.9)');
-                        grd.addColorStop(0.45, 'rgba(255,255,255,0.4)');
-                        grd.addColorStop(1.0, 'rgba(255,255,255,0.02)');
+                        grd.addColorStop(0.0, 'rgba(255,255,255,0.8)');
+                        grd.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+                        grd.addColorStop(1.0, 'rgba(255,255,255,0.005)');
                         ctx.fillStyle = grd;
                         ctx.fillRect(0,0,size,size);
                         const alphaTex = new THREE.CanvasTexture(c);
