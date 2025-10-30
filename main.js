@@ -581,6 +581,7 @@ const ENABLE_HOVER_LIGHT = true;
 let autoRotateEnabled = true;
 const ENABLE_SPOT_SHADOW = false; // turn off spotlight shadowcaster for performance
 const ENABLE_GHOST_POINTS = false; // disable duplicated car particles
+let assetsReady = false; // mark when scene finished loading
 
 // Compute a robust local-space center for a mesh suitable for attaching hover lights
 function getStableLocalCenter(targetMesh) {
@@ -2863,6 +2864,7 @@ loader.load(
         
         scene.add(object);
         porscheModel = object;
+        assetsReady = true;
         
         // Spotlight that only lights the car and floor (layers), casting shadows onto the podium
         (function addShadowOnlySpotlight() {
@@ -3530,14 +3532,23 @@ setTimeout(resetHoverStates, 1000);
         const overlay = document.getElementById('loading-overlay');
         const text = document.getElementById('loading-text');
         if (!overlay) return;
-        // Stop blinking text before the scene starts fading in
-        setTimeout(() => {
-            if (text) text.style.display = 'none';
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-                setTimeout(() => { try { overlay.remove(); } catch(_){} }, 1900);
-            }, 200); // small gap so text never overlaps the scene during fade
-        }, 1400);
+        const minShowMs = 1200; // ensure at least this long
+        const start = performance.now();
+        const tick = () => {
+            const elapsed = performance.now() - start;
+            if (assetsReady && elapsed >= minShowMs) {
+                // Fade in UI elements just before scene fade
+                document.querySelectorAll('.ui-fade').forEach(el => el.classList.add('visible'));
+                if (text) text.style.display = 'none';
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    setTimeout(() => { try { overlay.remove(); } catch(_){} }, 1900);
+                }, 200);
+            } else {
+                requestAnimationFrame(tick);
+            }
+        };
+        requestAnimationFrame(tick);
     })();
 
 animate();

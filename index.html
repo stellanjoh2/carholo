@@ -271,6 +271,10 @@
             stroke: #ffaa00; /* Slightly brighter yellow on hover */
         }
 
+        /* UI staged fade-in */
+        .ui-fade { opacity: 0; transition: opacity 0.8s ease; }
+        .ui-fade.visible { opacity: 1; }
+
         /* Rotate toggle button */
         #rotate-button {
             position: fixed;
@@ -460,25 +464,25 @@
         <div id="part-name"></div>
         <div id="part-info"></div>
     </div>
-    <div id="cursor-cross"></div>
+    <div id="cursor-cross" class="ui-fade"></div>
     <div id="loading-overlay"><div id="loading-text">LOADING CONFIGURATOR</div></div>
-    <div id="tooltip">
+    <div id="tooltip" class="ui-fade">
         <div id="tooltip-content">
             <div id="tooltip-part-name"></div>
             <div id="tooltip-status"></div>
             <div id="tooltip-icon"></div>
         </div>
     </div>
-    <div id="music-player">
+    <div id="music-player" class="ui-fade">
         <div id="music-icon"></div>
     </div>
-    <div id="rotate-button">
+    <div id="rotate-button" class="ui-fade">
         <div id="rotate-icon"></div>
     </div>
-    <div id="info-button">
+    <div id="info-button" class="ui-fade">
         <div id="info-icon"></div>
     </div>
-    <div id="fullscreen-button">
+    <div id="fullscreen-button" class="ui-fade">
         <div id="fullscreen-icon"></div>
     </div>
     <script type="importmap">
