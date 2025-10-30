@@ -615,13 +615,11 @@ function getStableLocalCenter(targetMesh) {
 
 // 3D UI: spinning cog icon (bottom-left), rendered as textured plane parented to camera
 let uiCogMesh = null;
-let uiCogTargetPx = 128; // 128x128 px requested
+let uiCogTargetPx = 141; // +10% size from 128px
 function initializeUICog() {
     if (uiCogMesh) return;
     try {
-        // Inline SVG monitor/computer icon (Feather-like), to avoid external loads
-        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>';
-        const dataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        // Load local Porsche logo SVG and tint to UI orange
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -629,9 +627,14 @@ function initializeUICog() {
             canvas.height = uiCogTargetPx;
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Draw with padding so the icon never crops at edges
+            // Draw with padding and tint to UI yellow
             const pad = Math.floor(canvas.width * 0.08);
             ctx.drawImage(img, pad, pad, canvas.width - pad * 2, canvas.height - pad * 2);
+            // Tint
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = '#ffd700'; // UI yellow
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'source-over';
             const tex = new THREE.CanvasTexture(canvas);
             tex.colorSpace = THREE.SRGBColorSpace;
             // Keep texture static; we'll rotate mesh in 3D
@@ -644,7 +647,7 @@ function initializeUICog() {
             uiCogMesh.renderOrder = 2000;
             uiCogMesh.frustumCulled = false;
         };
-        img.src = dataUrl;
+        img.src = 'porsche-3-logo-svg-vector.svg';
     } catch (_) {
         // No-op fallback
     }
@@ -3264,49 +3267,15 @@ function animate() {
     // Spin and layout the 3D UI cog
     if (uiCogMesh) {
         try {
-            // Rotate into the screen around its local Y axis (inward spin)
-            uiCogMesh.rotation.y += 0.05;
+            // Rotate into the screen around its local Y axis (inward spin) - slower
+            uiCogMesh.rotation.y += 0.01;
             layoutUICog();
         } catch (_) {}
     }
 
     //
 
-    // Floor light color synced to hovered object health (static, no blinking)
-    // DISABLED - was causing wheels to glow constantly
-    // if (warningMesh && warningMesh.material) {
-    //     // Determine light color based on hovered object health
-    //     let lightColor = 0xff6600; // Default orange (no red glow when not hovering)
-    //     let lightIntensity = 7.5;
-    //     
-    //     if (hoveredMesh) {
-    //         // Get the health status for the currently hovered mesh
-    //         const partId = hoveredMesh.uuid;
-    //         const hash = partId.split('').reduce((a, b) => {
-    //             a = ((a << 5) - a) + b.charCodeAt(0);
-    //             return a & a;
-    //         }, 0);
-    //         const statusCategory = Math.abs(hash) % 3;
-    //         
-    //         if (statusCategory === 0) {
-    //             // Good status - green light
-    //             lightColor = 0x44ff44;
-    //             lightIntensity = 5.0; // Slightly dimmer for good status
-    //         } else if (statusCategory === 1) {
-    //             // Warning status - red light
-    //             lightColor = 0xff4444;
-    //             lightIntensity = 7.5;
-    //         } else {
-    //             // Neutral status - yellow light
-    //             lightColor = 0xffd700;
-    //             lightIntensity = 6.0;
-    //         }
-    //     }
-    //     
-    //     warningMesh.material.emissive.setHex(lightColor);
-    //     warningMesh.material.emissiveIntensity = lightIntensity;
-    //     warningMesh.material.needsUpdate = true;
-    // }
+    
     
     // Update panel blur rect from DOM position
     const infoEl = document.getElementById('part-info');
@@ -3410,12 +3379,7 @@ function animate() {
         }
     }
     
-    // Flicker effect disabled - keeping text stable
-    // const partContainerEl = document.getElementById('part-container');
-    // if (partContainerEl && partContainerEl.classList.contains('visible')) {
-    //     const flickerOpacity = 0.75 + Math.random() * 0.25; // Between 0.75 and 1.0
-    //     partContainerEl.style.opacity = flickerOpacity;
-    // }
+    
     
     // Update controls
     controls.update();
