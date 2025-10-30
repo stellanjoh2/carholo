@@ -3334,6 +3334,8 @@ function animate() {
         const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
         tooltipIcon.style.opacity = opacity;
     }
+    // Drive loading text blink at the same speed as red tooltip label
+    // loading text blink handled via CSS keyframes for consistent timing
     
     // Spin planetary orbit parents
     if (orbitParents.length > 0) {
@@ -3522,6 +3524,21 @@ setTimeout(resetHoverStates, 1000);
     initializeInfoToggle();
     initializeUICog();
     initializeRotateToggle();
+
+    // Fade out loading overlay after brief intro
+    (function fadeOutLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        const text = document.getElementById('loading-text');
+        if (!overlay) return;
+        // Stop blinking text before the scene starts fading in
+        setTimeout(() => {
+            if (text) text.style.display = 'none';
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                setTimeout(() => { try { overlay.remove(); } catch(_){} }, 1900);
+            }, 200); // small gap so text never overlaps the scene during fade
+        }, 1400);
+    })();
 
 animate();
 

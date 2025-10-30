@@ -335,6 +335,34 @@
             from, to { border-color: transparent; }
             50% { border-color: #ffd700; }
         }
+
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            opacity: 1;
+            transition: opacity 1.6s ease; /* longer fade out */
+            pointer-events: all;
+        }
+        #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        #loading-text {
+            color: #ffd700;
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 12px; /* half size */
+            letter-spacing: 4px;
+            opacity: 1;
+            animation: hardBlinkFast 0.4s steps(1, end) infinite; /* constant fast blink from frame 0 */
+            animation-fill-mode: both;
+        }
+        @keyframes hardBlinkFast {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
         
         #part-container {
             position: fixed;
@@ -433,6 +461,7 @@
         <div id="part-info"></div>
     </div>
     <div id="cursor-cross"></div>
+    <div id="loading-overlay"><div id="loading-text">LOADING EXPERIENCE</div></div>
     <div id="tooltip">
         <div id="tooltip-content">
             <div id="tooltip-part-name"></div>
