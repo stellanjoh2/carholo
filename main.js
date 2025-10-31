@@ -28,11 +28,12 @@ const camera = new THREE.PerspectiveCamera(
     50,
     window.innerWidth / window.innerHeight,
     0.1,
-    1000
+    5000
 );
 // Ensure camera (and its children like UI elements) are part of the scene graph
 scene.add(camera);
 camera.position.set(0, 5, 10);
+camera.updateProjectionMatrix();
 
 console.log('Creating renderer...');
 const renderer = new THREE.WebGLRenderer({ 
@@ -2583,6 +2584,7 @@ loader.load(
                         color: 0xffffff,
                         multisample: 2
                     });
+                    mirror.frustumCulled = false; // never cull reflector when zooming out
                     // Convert world position to podium local since we'll parent to podium
                     const worldPos = new THREE.Vector3(center.x, y, center.z);
                     const localPos = podium.worldToLocal(worldPos.clone());
