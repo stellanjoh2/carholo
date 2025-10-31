@@ -1055,6 +1055,25 @@ function initializeInfoToggle() {
     });
 }
 
+// UI hover hard-blink (match tooltip blink)
+const uiHoverBlinkTargets = [];
+function initializeUIHoverBlink() {
+    const buttonIds = ['music-player', 'rotate-button', 'info-button', 'fullscreen-button'];
+    buttonIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // Track hover state via class
+        el.addEventListener('mouseenter', () => {
+            el.classList.add('ui-hover-blink');
+            if (!uiHoverBlinkTargets.includes(el)) uiHoverBlinkTargets.push(el);
+        });
+        el.addEventListener('mouseleave', () => {
+            el.classList.remove('ui-hover-blink');
+            el.style.opacity = ''; // reset inline override
+        });
+    });
+}
+
 function initializeRotateToggle() {
     const btn = document.getElementById('rotate-button');
     const icon = document.getElementById('rotate-icon');
@@ -3336,6 +3355,17 @@ function animate() {
         const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
         tooltipIcon.style.opacity = opacity;
     }
+    // UI icons hover hard-blink (use current icon color, just toggle opacity)
+    if (uiHoverBlinkTargets.length > 0) {
+        const blinkSpeed = 60;
+        const opacity = Math.sin(grainTime * blinkSpeed) > 0 ? 1.0 : 0.0;
+        for (let i = 0; i < uiHoverBlinkTargets.length; i++) {
+            const el = uiHoverBlinkTargets[i];
+            if (el.classList.contains('ui-hover-blink')) {
+                el.style.opacity = opacity;
+            }
+        }
+    }
     // Drive loading text blink at the same speed as red tooltip label
     // loading text blink handled via CSS keyframes for consistent timing
     
@@ -3526,6 +3556,7 @@ setTimeout(resetHoverStates, 1000);
     initializeInfoToggle();
     initializeUICog();
     initializeRotateToggle();
+    initializeUIHoverBlink();
 
     // Fade out loading overlay after brief intro
     (function fadeOutLoading() {
