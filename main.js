@@ -2574,7 +2574,7 @@ loader.load(
                     const psize = pb.getSize(new THREE.Vector3());
                     const pradius = Math.max(psize.x, psize.z) * 0.48; // slightly smaller than podium
                     const center = pb.getCenter(new THREE.Vector3());
-                    const y = pb.max.y + Math.max(psize.y * 0.015, 0.008) + 0.001; // lift ~1mm to avoid z-fighting when zoomed out
+                    const y = pb.max.y + Math.max(psize.y * 0.015, 0.008) + 0.003; // lift a bit more to avoid distance z-fighting
 
                     const mirrorGeom = new THREE.CircleGeometry(pradius, 128);
                     const mirror = new Reflector(mirrorGeom, {
@@ -2594,6 +2594,7 @@ loader.load(
                     mirror.material.transparent = true;
                     mirror.material.opacity = 0.04; // much darker reflection
                     mirror.material.depthWrite = false;
+                    mirror.material.depthTest = false; // always render above floor to avoid hard cutoff at distance
                     mirror.material.fog = false; // do not participate in scene fog
                     mirror.renderOrder = 999; // ensure drawn above the podium
                     mirror.name = 'GroundReflection';
