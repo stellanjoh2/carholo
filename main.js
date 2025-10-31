@@ -65,6 +65,22 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
+// Track drag state (declared early for OrbitControls listeners)
+let isDragging = false;
+
+// Track if camera is being rotated/dragged
+let cameraIsBeingRotated = false;
+let lastCameraRotationTime = 0;
+controls.addEventListener('start', () => {
+    cameraIsBeingRotated = true;
+    isDragging = true; // Also mark as dragging to prevent menu
+    lastCameraRotationTime = Date.now(); // Track when user manually starts rotating
+});
+controls.addEventListener('end', () => {
+    cameraIsBeingRotated = false;
+    // Don't reset isDragging here - let it reset on next click
+});
+
 // (Removed) handheld idle camera motion
 
 // Set up mouse buttons
@@ -892,6 +908,10 @@ let tooltipTypewriterSpeed = 1.5; // characters per frame (slower)
 const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
 hoverSound.volume = 0.3;
 
+// UI hover sound throttling (using hoverSound)
+let uiHoverSoundLastPlayed = 0;
+const UI_HOVER_SOUND_THROTTLE = 150; // Minimum ms between plays
+
 // Ambient music
 const ambientMusic = new Audio('calm-cyberpunk-ambient.mp3');
 ambientMusic.volume = 0.4;
@@ -1069,6 +1089,14 @@ function initializeUIHoverBlink() {
         el.addEventListener('mouseenter', () => {
             el.classList.add('ui-hover-blink');
             if (!uiHoverBlinkTargets.includes(el)) uiHoverBlinkTargets.push(el);
+            
+            // Play hover sound (throttled - using part hover sound)
+            const now = performance.now();
+            if (now - uiHoverSoundLastPlayed > UI_HOVER_SOUND_THROTTLE) {
+                hoverSound.currentTime = 0;
+                hoverSound.play().catch(e => console.log('UI hover sound playback failed:', e));
+                uiHoverSoundLastPlayed = now;
+            }
         });
         el.addEventListener('mouseleave', () => {
             el.classList.remove('ui-hover-blink');
@@ -1129,6 +1157,68 @@ function onMouseMove(event) {
     if (tooltip) {
         tooltip.style.left = `${event.clientX}px`;
         tooltip.style.top = `${event.clientY}px`;
+    }
+    
+    // If menu is open, skip hover detection and clear any existing hover states
+    if (menuVisible) {
+        // Clear any existing hover states
+        if (hoveredMesh) {
+            // Restore original material
+            if (hoveredMesh.userData.originalMaterial) {
+                if (hoveredMesh.material) {
+                    hoveredMesh.material.dispose();
+                }
+                hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
+                hoveredMesh.userData.originalMaterial = null;
+            }
+            
+            // Remove bounding box
+            if (boundingBoxHelper && boundingBoxHelper.parent) {
+                boundingBoxHelper.parent.remove(boundingBoxHelper);
+                boundingBoxHelper = null;
+            }
+            
+            // Remove corner indicators
+            cornerIndicators.forEach(indicator => {
+                if (indicator.parent) {
+                    indicator.parent.remove(indicator);
+                }
+            });
+            cornerIndicators = [];
+            
+            // Remove labels
+            if (cornerLabels.length && labelsLayerEl) {
+                cornerLabels.forEach(({ el }) => {
+                    if (el && el.parentNode) {
+                        labelsLayerEl.removeChild(el);
+                    }
+                });
+            }
+            cornerLabels = [];
+            
+            // Remove hover light
+            if (hoverPointLight) {
+                scene.remove(hoverPointLight);
+                hoverPointLight.dispose?.();
+                hoverPointLight = null;
+                hoverLightOwner = null;
+            }
+            
+            // Hide tooltip
+            if (tooltip) {
+                tooltip.classList.remove('visible');
+            }
+            
+            // Reset cursor
+            const crossEl = document.getElementById('cursor-cross');
+            if (crossEl) {
+                crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+            }
+            
+            hoveredMesh = null;
+            hoverFadeProgress = 0;
+        }
+        return; // Don't process hover when menu is open
     }
     
     // Normalize mouse coordinates to -1 to 1 range for shader inputs
@@ -1890,6 +1980,433 @@ function onMouseMove(event) {
 }
 
 window.addEventListener('mousemove', onMouseMove);
+
+// Part menu state and click detection
+let clickedMesh = null;
+let menuVisible = false;
+
+// Track mouse down position to detect drag vs click
+let mouseDownPos = { x: 0, y: 0 };
+let mouseDownTime = 0;
+// isDragging is declared earlier near OrbitControls
+const CLICK_THRESHOLD = 10; // pixels - max movement to be considered a click (increased from 5)
+const CLICK_MAX_TIME = 500; // ms - max time for a click (increased from 300)
+
+// Track when mouse button goes down
+function onMouseDown(event) {
+    if (event.button !== 0) return; // Only left mouse button
+    mouseDownPos.x = event.clientX;
+    mouseDownPos.y = event.clientY;
+    mouseDownTime = Date.now();
+    isDragging = false;
+}
+
+// Track mouse movement to detect dragging (called from existing onMouseMove handler)
+function checkDrag(event) {
+    if (mouseDownTime === 0) return false; // Not tracking a drag
+    
+    const dx = event.clientX - mouseDownPos.x;
+    const dy = event.clientY - mouseDownPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > CLICK_THRESHOLD) {
+        isDragging = true; // User is dragging, not clicking
+        return true;
+    }
+    return false;
+}
+
+// Note: lastCameraRotationTime is tracked in OrbitControls 'start' event above
+// This ensures we only track manual user rotation, not auto-rotation
+
+window.addEventListener('mousedown', onMouseDown);
+// Note: We don't add a separate mousemove handler - we'll check drag in the click handler
+// The existing onMouseMove handler handles normal mouse tracking
+
+function onMouseClick(event) {
+    // Check if clicking on UI elements (don't trigger menu on UI clicks)
+    const target = event.target;
+    if (target.closest('#part-menu-overlay') || 
+        target.closest('#music-player') || 
+        target.closest('#fullscreen-button') || 
+        target.closest('#info-button') || 
+        target.closest('#rotate-button')) {
+        // If clicking backdrop, close menu
+        if (target.id === 'part-menu-backdrop') {
+            hidePartMenu();
+        }
+        // Reset drag tracking
+        mouseDownTime = 0;
+        isDragging = false;
+        return;
+    }
+    
+    if (menuVisible) {
+        // Reset drag tracking
+        mouseDownTime = 0;
+        isDragging = false;
+        return; // Don't trigger if menu is already open
+    }
+    
+    // Check if this was a true click (not a drag)
+    // If mouseDownTime is 0, it means mousedown wasn't tracked - allow click anyway
+    let timeSinceDown = 0;
+    let distance = 0;
+    
+    if (mouseDownTime > 0) {
+        timeSinceDown = Date.now() - mouseDownTime;
+        const dx = event.clientX - mouseDownPos.x;
+        const dy = event.clientY - mouseDownPos.y;
+        distance = Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // Don't show menu if:
+    // 1. User dragged the mouse (distance > threshold) AND we tracked mousedown
+    // 2. Click was too long (time > max time) AND we tracked mousedown
+    // 3. Camera is currently being manually rotated by user (not auto-rotation)
+    // Note: We don't block based on time since rotation - auto-rotation shouldn't block clicks
+    const shouldBlock = (mouseDownTime > 0 && (isDragging || distance > CLICK_THRESHOLD || timeSinceDown > CLICK_MAX_TIME)) ||
+                        cameraIsBeingRotated; // Only block if user is actively dragging camera (not auto-rotation)
+    
+    // Reset drag tracking
+    mouseDownTime = 0;
+    
+    if (shouldBlock) {
+        isDragging = false;
+        console.log('Click blocked:', { isDragging, distance, timeSinceDown, cameraIsBeingRotated, timeSinceRotation });
+        return;
+    }
+    
+    // Use same raycaster logic as hover
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    
+    if (porscheModel) {
+        const intersects = raycaster.intersectObject(porscheModel, true);
+        
+        // Same validation as hover
+        function isValidClickTarget(obj) {
+            if (!obj || !obj.isMesh) return false;
+            let n = obj;
+            while (n) {
+                if (n.userData?.isHelper) return false;
+                const nm = (n.name || '').toLowerCase();
+                if (nm.includes('reference') || nm.includes('ghostpointcloud') || nm.includes('bounding') || nm.includes('hoverlight') || nm.includes('podium')) return false;
+                if (n === orbitsGroup || n === scatteredCrossGroup) return false;
+                n = n.parent;
+            }
+            const bbox = new THREE.Box3().setFromObject(obj);
+            const size = bbox.getSize(new THREE.Vector3());
+            const center = bbox.getCenter(new THREE.Vector3());
+            const largest = Math.max(size.x, size.y, size.z);
+            const nearOrigin = center.length() < modelMaxDimension * 0.05;
+            const verySmall = largest < modelMaxDimension * 0.03;
+            const geom = obj.geometry;
+            const vertCount = geom?.attributes?.position?.count || 0;
+            const tooFewVerts = vertCount > 0 && vertCount < 30;
+            if ((nearOrigin && verySmall) || tooFewVerts) return false;
+            return true;
+        }
+        
+        const validIntersect = intersects.find(hit => isValidClickTarget(hit.object));
+        if (validIntersect) {
+            clickedMesh = validIntersect.object;
+            console.log('Valid click detected on:', clickedMesh.name);
+            showPartMenu(clickedMesh);
+        } else {
+            console.log('Click detected but no valid mesh found. Total intersects:', intersects.length);
+        }
+    }
+}
+
+window.addEventListener('click', onMouseClick);
+
+// Close menu with ESC key
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && menuVisible) {
+        hidePartMenu();
+    }
+});
+
+// Part menu functions
+function getPartMenuOptions(mesh) {
+    // Generate part-specific menu options based on the mesh
+    const partName = mesh.name || 'Unknown Part';
+    const partId = mesh.uuid;
+    const hash = partId.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+    const statusCategory = Math.abs(hash) % 3;
+    
+    const baseOptions = [
+        {
+            title: 'View Details',
+            desc: 'Inspect part specifications and status',
+            action: () => console.log('View details:', partName)
+        },
+        {
+            title: 'Maintenance History',
+            desc: 'View service records and maintenance log',
+            action: () => console.log('Maintenance history:', partName)
+        },
+        {
+            title: 'Replace Part',
+            desc: 'Order replacement or schedule installation',
+            action: () => console.log('Replace part:', partName)
+        }
+    ];
+    
+    if (statusCategory === 1) {
+        // Warning status - add urgent option
+        baseOptions.unshift({
+            title: '⚠️ Immediate Action Required',
+            desc: 'This part requires urgent attention',
+            action: () => console.log('Urgent action:', partName)
+        });
+    } else if (statusCategory === 0) {
+        // Good status - add optimization option
+        baseOptions.push({
+            title: 'Optimize Performance',
+            desc: 'Enhance part efficiency and longevity',
+            action: () => console.log('Optimize:', partName)
+        });
+    }
+    
+    return baseOptions;
+}
+
+function showPartMenu(mesh) {
+    const gsap = window.gsap || window.GSAP;
+    if (!gsap) {
+        console.warn('GSAP not loaded');
+        return;
+    }
+    
+    menuVisible = true;
+    const overlay = document.getElementById('part-menu-overlay');
+    const container = document.getElementById('part-menu-container');
+    const title = document.getElementById('part-menu-title');
+    const optionsContainer = document.getElementById('part-menu-options');
+    const backdrop = document.getElementById('part-menu-backdrop');
+    const closeBtn = document.getElementById('part-menu-close');
+    
+    if (!overlay || !container || !title || !optionsContainer) {
+        console.warn('Menu elements not found', { overlay, container, title, optionsContainer });
+        return;
+    }
+    
+    console.log('Showing menu for:', mesh.name);
+    
+    // Set title
+    const partName = mesh.name || 'Unknown Part';
+    title.textContent = partName;
+    
+    // Generate options
+    const options = getPartMenuOptions(mesh);
+    optionsContainer.innerHTML = '';
+    
+    options.forEach((opt, index) => {
+        const optionEl = document.createElement('div');
+        optionEl.className = 'part-menu-option';
+        
+        // Add warning class if it's the urgent action option
+        if (opt.title.includes('⚠️') || opt.title.includes('Immediate Action')) {
+            optionEl.classList.add('warning-option');
+        }
+        
+        // Replace warning emoji with feather icon
+        let titleHtml = opt.title;
+        if (opt.title.includes('⚠️')) {
+            titleHtml = opt.title.replace('⚠️', 
+                '<span class="warning-icon-wrapper">' +
+                '<i data-feather="alert-triangle" class="warning-icon-feather"></i>' +
+                '</span>'
+            );
+        }
+        
+        optionEl.innerHTML = `
+            <div class="part-menu-option-title">${titleHtml}</div>
+            <div class="part-menu-option-desc">${opt.desc}</div>
+        `;
+        
+        // Initialize feather icons after adding to DOM
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // Add hover sound to menu options (using part hover sound)
+        optionEl.addEventListener('mouseenter', () => {
+            const now = performance.now();
+            if (now - uiHoverSoundLastPlayed > UI_HOVER_SOUND_THROTTLE) {
+                hoverSound.currentTime = 0;
+                hoverSound.play().catch(e => console.log('Menu hover sound playback failed:', e));
+                uiHoverSoundLastPlayed = now;
+            }
+        });
+        
+        optionEl.addEventListener('click', () => {
+            opt.action();
+            hidePartMenu();
+        });
+        optionsContainer.appendChild(optionEl);
+    });
+    
+    // Close button
+    closeBtn.onclick = () => hidePartMenu();
+    
+    // Disable CSS transitions on all elements before animating to ensure same fade speed
+    const partContainerEl = document.getElementById('part-container');
+    const uiButtons = [
+        document.getElementById('music-player'),
+        document.getElementById('fullscreen-button'),
+        document.getElementById('rotate-button'),
+        document.getElementById('info-button')
+    ];
+    
+    // Disable CSS transitions temporarily for synchronized GSAP animations
+    const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+    allElements.forEach(el => {
+        el.style.transition = 'none'; // Disable CSS transitions
+    });
+    
+    // Hide left side info window and title when menu opens
+    if (partContainerEl) {
+        gsap.to(partContainerEl, { opacity: 0, duration: 0.3, ease: 'power2.out', overwrite: true });
+    }
+    
+    // Hide UI buttons with exact same timing as info field
+    uiButtons.forEach(btn => {
+        if (btn) {
+            gsap.to(btn, { opacity: 0, duration: 0.3, ease: 'power2.out', overwrite: true });
+        }
+    });
+    
+    // Hide Porsche logo (3D mesh) with same timing
+    if (uiCogMesh && uiCogMesh.material) {
+        gsap.to(uiCogMesh.material, { opacity: 0, duration: 0.3, ease: 'power2.out' });
+    }
+    
+    // Show overlay and make visible
+    overlay.classList.add('visible');
+    gsap.set(overlay, { opacity: 1 }); // Ensure overlay is visible
+    
+    // GSAP animation: fade in backdrop
+    gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    
+    // GSAP animation: scale in container (set initial state, then animate)
+    gsap.set(container, { scale: 0.8, opacity: 0, y: 20 });
+    gsap.to(container, { 
+        scale: 1, 
+        opacity: 1, 
+        y: 0, 
+        duration: 0.4, 
+        ease: 'back.out(1.7)' 
+    });
+    
+    // GSAP animation: stagger options in with yellow blink (oldschool digital computer look)
+    const optionElements = optionsContainer.querySelectorAll('.part-menu-option');
+    
+    // First, show yellow solid field (blink effect)
+    optionElements.forEach((el, index) => {
+        gsap.set(el, { opacity: 0, y: 20, scale: 0.95 });
+        
+        // Create yellow flash/blink effect before revealing
+        const yellowBlink = gsap.timeline({ delay: index * 0.08 });
+        yellowBlink
+            .set(el, { backgroundColor: '#ffd700', opacity: 1 }) // Solid yellow blink
+            .to(el, { duration: 0.1, opacity: 0.3 }) // Fade yellow slightly
+            .to(el, { 
+                backgroundColor: 'rgba(255, 215, 0, 0.05)', // Back to normal
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.2,
+                ease: 'power2.out'
+            });
+    });
+    
+    // Clear GSAP inline backgroundColor after animation completes so CSS hover works
+    optionElements.forEach((el, index) => {
+        setTimeout(() => {
+            // Clear GSAP's inline backgroundColor so CSS hover can work
+            gsap.set(el, { clearProps: 'backgroundColor' });
+        }, (index * 0.08 + 0.4) * 1000); // After animation completes
+    });
+}
+
+function hidePartMenu() {
+    const gsap = window.gsap || window.GSAP;
+    if (!gsap) return;
+    
+    const overlay = document.getElementById('part-menu-overlay');
+    const container = document.getElementById('part-menu-container');
+    const backdrop = document.getElementById('part-menu-backdrop');
+    const optionsContainer = document.getElementById('part-menu-options');
+    
+    if (!overlay || !container) return;
+    
+    // GSAP animation: stagger options out
+    const optionElements = optionsContainer.querySelectorAll('.part-menu-option');
+    gsap.to(optionElements, {
+        opacity: 0,
+        y: -10,
+        scale: 0.95,
+        duration: 0.2,
+        stagger: 0.03,
+        ease: 'power2.in'
+    });
+    
+    // GSAP animation: scale out container
+    gsap.to(container, {
+        scale: 0.9,
+        opacity: 0,
+        y: -10,
+        duration: 0.3,
+        ease: 'power2.in',
+        onComplete: () => {
+            overlay.classList.remove('visible');
+            menuVisible = false;
+            clickedMesh = null;
+        }
+    });
+    
+    // Fade out backdrop
+    gsap.to(backdrop, { opacity: 0, duration: 0.3 });
+    
+    // Show left side info window and title again when menu closes
+    const partContainerEl = document.getElementById('part-container');
+    const uiButtons = [
+        document.getElementById('music-player'),
+        document.getElementById('fullscreen-button'),
+        document.getElementById('rotate-button'),
+        document.getElementById('info-button')
+    ];
+    
+    // Disable CSS transitions temporarily for synchronized GSAP animations
+    const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+    allElements.forEach(el => {
+        el.style.transition = 'none'; // Disable CSS transitions
+    });
+    
+    if (partContainerEl && infoPanelEnabled) {
+        gsap.to(partContainerEl, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.2, overwrite: true });
+    }
+    
+    // Show UI buttons with exact same timing as info field
+    uiButtons.forEach(btn => {
+        if (btn) {
+            gsap.to(btn, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.2, overwrite: true });
+        }
+    });
+    
+    // Show Porsche logo (3D mesh) again with same timing
+    if (uiCogMesh && uiCogMesh.material) {
+        gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.2 });
+    }
+}
 
 // Load Porsche model
 const loader = new FBXLoader();

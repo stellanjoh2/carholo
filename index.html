@@ -47,7 +47,7 @@
             width: 50px;
             height: 50px;
             pointer-events: none;
-            z-index: 1000;
+            z-index: 10000; /* Higher than menu overlay (9999) to be visible on top */
             transform: translate(-50%, -50%);
         }
         #cursor-cross::before,
@@ -456,6 +456,148 @@
                 opacity: 1;
             }
         }
+
+        /* Part Menu Overlay */
+        #part-menu-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            display: none; /* Hidden by default */
+        }
+        #part-menu-overlay.visible {
+            display: block; /* Show when visible */
+            pointer-events: all;
+        }
+        #part-menu-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.1); /* Much lighter - almost no darkening */
+            backdrop-filter: blur(2px); /* Less blur too */
+            pointer-events: all; /* Allow clicks through backdrop */
+        }
+        #part-menu-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            max-width: 600px;
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid #ffd700; /* 1px stroke like other lines */
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+        }
+        #part-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        #part-menu-title {
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 31px; /* Increased ~10% from 28px (28 * 1.1 = 30.8, rounded to 31) */
+            font-weight: 700;
+            color: #ffd700;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        #part-menu-close {
+            background: transparent;
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-size: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s ease;
+        }
+        #part-menu-close:hover {
+            background: #ffd700;
+            color: #000;
+            transform: scale(1.1);
+        }
+        #part-menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .part-menu-option {
+            padding: 16px 24px;
+            background: rgba(255, 215, 0, 0.05); /* Neutral state */
+            border: 1px solid #ffd700; /* Solid yellow with no opacity */
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 20px; /* Increased by ~25% from 16px (16 * 1.25 = 20) */
+            color: #ffd700; /* Neutral state - yellow text */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            position: relative;
+        }
+        .part-menu-option:hover {
+            background: #ffd700 !important; /* Solid yellow on hover */
+            color: #000 !important; /* Black text on hover */
+            border-color: #ffd700 !important;
+        }
+        /* Warning option (damaged parts) - red instead of yellow */
+        .part-menu-option.warning-option {
+            background: rgba(255, 68, 68, 0.05); /* Red background for damaged parts */
+            border: 1px solid #ff4444; /* Red border */
+            color: #ff4444; /* Red text */
+        }
+        .part-menu-option.warning-option:hover {
+            background: #ff4444 !important; /* Solid red on hover */
+            color: #000 !important; /* Black text on hover */
+            border-color: #ff4444 !important;
+        }
+        .part-menu-option:hover .part-menu-option-title,
+        .part-menu-option:hover .part-menu-option-desc {
+            color: #000 !important; /* Ensure text is black on hover */
+        }
+        /* Warning option text should be red (non-hover state) */
+        .part-menu-option.warning-option .part-menu-option-title,
+        .part-menu-option.warning-option .part-menu-option-desc {
+            color: #ff4444; /* Red text for damaged parts */
+        }
+        /* Warning icon styling using feather icons */
+        .part-menu-option.warning-option .warning-icon-wrapper {
+            display: inline-block;
+            margin-right: 8px;
+        }
+        /* Red warning triangle for damaged parts (neutral state) */
+        .part-menu-option.warning-option .warning-icon-wrapper .warning-icon-feather {
+            width: 18px;
+            height: 18px;
+            stroke: #ff4444; /* Red for damaged parts */
+            stroke-width: 2;
+            fill: none;
+        }
+        /* Black warning triangle on hover (red button) */
+        .part-menu-option.warning-option:hover .warning-icon-wrapper .warning-icon-feather {
+            stroke: #000; /* Black on hover */
+        }
+        .part-menu-option-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            font-size: 20px; /* Match container font size */
+        }
+        .part-menu-option-desc {
+            font-size: 14px; /* Increased from 12px for better readability */
+            opacity: 0.7;
+            font-weight: 100;
+        }
     </style>
 </head>
 <body>
@@ -484,6 +626,18 @@
     <div id="fullscreen-button" class="ui-fade">
         <div id="fullscreen-icon"></div>
     </div>
+    <!-- Part Menu Overlay -->
+    <div id="part-menu-overlay">
+        <div id="part-menu-backdrop"></div>
+        <div id="part-menu-container">
+            <div id="part-menu-header">
+                <h2 id="part-menu-title"></h2>
+                <button id="part-menu-close">&times;</button>
+            </div>
+            <div id="part-menu-options"></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script type="importmap">
     {
         "imports": {
