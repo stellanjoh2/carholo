@@ -64,29 +64,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
-// Subtle handheld idle camera motion
-let userInteracting = false;
-controls.addEventListener('start', () => { userInteracting = true; });
-controls.addEventListener('end', () => {
-    userInteracting = false;
-    // Reset base after interaction so idle starts from user's framing
-    handCam.basePos.copy(camera.position);
-    handCam.baseTarget.copy(controls.target);
-    handCam.initialized = true;
-});
-window.addEventListener('wheel', () => { userInteracting = true; clearTimeout(_idleWheelT); _idleWheelT = setTimeout(()=>userInteracting=false, 400); }, { passive: true });
-let _idleWheelT;
-
-const handCam = {
-    enabled: true,
-    posAmp: 0.02,     // meters-ish, very subtle
-    rotAmp: 0.003,    // radians, very subtle
-    speed1: 0.3,      // Hz
-    speed2: 0.18,     // Hz
-    basePos: new THREE.Vector3(),
-    baseTarget: new THREE.Vector3(),
-    initialized: false
-};
+// (Removed) handheld idle camera motion
 
 // Set up mouse buttons
 controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
@@ -3176,38 +3154,7 @@ function animate() {
     grainTime += 0.01;
     grainPass.uniforms.time.value = grainTime;
 
-    // Initialize base for handheld idle once (after controls are ready)
-    if (!handCam.initialized) {
-        handCam.basePos.copy(camera.position);
-        handCam.baseTarget.copy(controls.target);
-        handCam.initialized = true;
-    }
-
-    // Subtle handheld idle when not interacting
-    if (handCam.enabled && !userInteracting) {
-        const t = performance.now() * 0.001;
-        const s1 = Math.sin(t * Math.PI * 2 * handCam.speed1);
-        const c1 = Math.cos(t * Math.PI * 2 * handCam.speed1 + 0.7);
-        const s2 = Math.sin(t * Math.PI * 2 * handCam.speed2 + 1.3);
-        const c2 = Math.cos(t * Math.PI * 2 * handCam.speed2 + 0.9);
-
-        const ox = s1 * handCam.posAmp;
-        const oy = s2 * handCam.posAmp * 0.6;
-        const oz = c1 * handCam.posAmp * 0.8;
-        camera.position.set(
-            handCam.basePos.x + ox,
-            handCam.basePos.y + oy,
-            handCam.basePos.z + oz
-        );
-        const tx = s2 * handCam.posAmp * 0.25;
-        const ty = s1 * handCam.posAmp * 0.2;
-        const tz = c2 * handCam.posAmp * 0.25;
-        controls.target.set(
-            handCam.baseTarget.x + tx,
-            handCam.baseTarget.y + ty,
-            handCam.baseTarget.z + tz
-        );
-    }
+    // (Removed) handheld idle camera motion
 
     // Update particle system with ambient movement and color syncing
     const particles = scene.getObjectByName('ambientDust');
