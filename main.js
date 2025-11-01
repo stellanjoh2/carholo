@@ -1071,7 +1071,7 @@ let uiHoverSoundLastPlayed = 0;
 const UI_HOVER_SOUND_THROTTLE = 150; // Minimum ms between plays
 
 // Ambient music
-const ambientMusic = new Audio('calm-cyberpunk-ambient.mp3');
+const ambientMusic = new Audio('674414__gregorquendel__sci-fi-soundscape-drone-pad-harmonic-008-iv-designed-atmospheres.mp3');
 ambientMusic.volume = 0.4;
 ambientMusic.loop = true;
 ambientMusic.preload = 'auto';
