@@ -1791,7 +1791,7 @@ function onMouseMove(event) {
                             hoveredMesh.material.metalness = 1.0;
                             hoveredMesh.material.sheen = 2.0;
                             hoveredMesh.material.sheenRoughness = 0.3;
-                            hoveredMesh.material.sheenColor = new THREE.Color(0xff6600);
+                            hoveredMesh.material.sheenColor = new THREE.Color(0xff8c00); // Match updated Fresnel color
                             hoveredMesh.material.iridescence = 1.0;
                             hoveredMesh.material.iridescenceIOR = 1.3;
                             hoveredMesh.material.iridescenceThicknessRange = [100, 500];
