@@ -2235,6 +2235,7 @@ function onMouseClick(event) {
     
     if (shouldBlock) {
         isDragging = false;
+        const timeSinceRotation = Date.now() - lastCameraRotationTime;
         console.log('Click blocked:', { isDragging, distance, timeSinceDown, cameraIsBeingRotated, timeSinceRotation });
         return;
     }
@@ -4279,6 +4280,7 @@ function resetHoverStates() {
     }
     
     // Reset particles to default orange
+    const particles = scene.getObjectByName('ambientDust');
     if (particles && particles.userData) {
         particles.userData.currentColor = 0xffd700;
         particles.material.color.setHex(0xffd700);
