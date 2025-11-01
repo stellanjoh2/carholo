@@ -1035,11 +1035,11 @@ function createUISound(type) {
             break;
             
         case 'hover':
-            // Short digital blip/click
+            // Short digital blip/click - higher frequency and sharper
             const osc3 = audioContext.createOscillator();
             const gain3 = audioContext.createGain();
-            osc3.type = 'sine';
-            osc3.frequency.setValueAtTime(1200, now_time);
+            osc3.type = 'square'; // Square wave for sharper sound
+            osc3.frequency.setValueAtTime(1800, now_time); // Increased from 1200 to 1800Hz
             gain3.gain.setValueAtTime(0, now_time);
             gain3.gain.linearRampToValueAtTime(masterVolume * 0.4, now_time + 0.005);
             gain3.gain.exponentialRampToValueAtTime(0.001, now_time + 0.03);
@@ -1050,11 +1050,11 @@ function createUISound(type) {
             break;
             
         case 'select':
-            // Fast digital click/blip for button selection
+            // Fast digital click/blip for button selection - higher frequency and sharper
             const osc4 = audioContext.createOscillator();
             const gain4 = audioContext.createGain();
-            osc4.type = 'square';
-            osc4.frequency.setValueAtTime(1500, now_time);
+            osc4.type = 'square'; // Square wave for sharper sound
+            osc4.frequency.setValueAtTime(2200, now_time); // Increased from 1500 to 2200Hz
             gain4.gain.setValueAtTime(0, now_time);
             gain4.gain.linearRampToValueAtTime(masterVolume * 0.5, now_time + 0.002);
             gain4.gain.exponentialRampToValueAtTime(0.001, now_time + 0.02);
