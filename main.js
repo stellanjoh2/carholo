@@ -1035,33 +1035,33 @@ function createUISound(type) {
             break;
             
         case 'hover':
-            // Short digital blip/click - higher frequency and sharper
+            // Short digital blip/click - higher frequency and sharper, 50% shorter
             const osc3 = audioContext.createOscillator();
             const gain3 = audioContext.createGain();
             osc3.type = 'square'; // Square wave for sharper sound
             osc3.frequency.setValueAtTime(1800, now_time); // Increased from 1200 to 1800Hz
             gain3.gain.setValueAtTime(0, now_time);
-            gain3.gain.linearRampToValueAtTime(masterVolume * 0.4, now_time + 0.005);
-            gain3.gain.exponentialRampToValueAtTime(0.001, now_time + 0.03);
+            gain3.gain.linearRampToValueAtTime(masterVolume * 0.4, now_time + 0.0025); // 50% shorter attack
+            gain3.gain.exponentialRampToValueAtTime(0.001, now_time + 0.015); // 50% shorter duration (0.03 → 0.015)
             osc3.connect(gain3);
             gain3.connect(audioContext.destination);
             osc3.start(now_time);
-            osc3.stop(now_time + 0.03);
+            osc3.stop(now_time + 0.015); // 50% shorter (0.03 → 0.015)
             break;
             
         case 'select':
-            // Fast digital click/blip for button selection - higher frequency and sharper
+            // Fast digital click/blip for button selection - higher frequency and sharper, 50% shorter
             const osc4 = audioContext.createOscillator();
             const gain4 = audioContext.createGain();
             osc4.type = 'square'; // Square wave for sharper sound
             osc4.frequency.setValueAtTime(2200, now_time); // Increased from 1500 to 2200Hz
             gain4.gain.setValueAtTime(0, now_time);
-            gain4.gain.linearRampToValueAtTime(masterVolume * 0.5, now_time + 0.002);
-            gain4.gain.exponentialRampToValueAtTime(0.001, now_time + 0.02);
+            gain4.gain.linearRampToValueAtTime(masterVolume * 0.5, now_time + 0.001); // 50% shorter attack
+            gain4.gain.exponentialRampToValueAtTime(0.001, now_time + 0.01); // 50% shorter duration (0.02 → 0.01)
             osc4.connect(gain4);
             gain4.connect(audioContext.destination);
             osc4.start(now_time);
-            osc4.stop(now_time + 0.02);
+            osc4.stop(now_time + 0.01); // 50% shorter (0.02 → 0.01)
             break;
     }
 }
