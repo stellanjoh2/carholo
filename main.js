@@ -2155,6 +2155,7 @@ let menuVisible = false;
 let menuMouseFollow = { x: 0, y: 0, targetX: 0, targetY: 0 };
 let menuFollowAnimation = null; // Track ongoing animation
 const MENU_MOUSE_FOLLOW_STRENGTH = 15; // Pixels of movement per screen edge distance (subtle)
+let autoRotateStateBeforeMenu = true; // Store auto-rotate state before menu opens
 
 // Track mouse down position to detect drag vs click
 let mouseDownPos = { x: 0, y: 0 };
@@ -2355,6 +2356,10 @@ function showPartMenu(mesh) {
         console.warn('GSAP not loaded');
         return;
     }
+    
+    // Pause car rotation when menu opens
+    autoRotateStateBeforeMenu = autoRotateEnabled;
+    autoRotateEnabled = false;
     
     menuVisible = true;
     const overlay = document.getElementById('part-menu-overlay');
@@ -2580,6 +2585,9 @@ function hidePartMenu() {
             overlay.classList.remove('visible');
             menuVisible = false;
             clickedMesh = null;
+            
+            // Resume car rotation to previous state when menu closes
+            autoRotateEnabled = autoRotateStateBeforeMenu;
             
             // Reset container position when menu closes
             const container = document.getElementById('part-menu-container');
