@@ -1293,6 +1293,12 @@ function onMouseMove(event) {
     
     // If menu is open, track mouse for menu follow effect
     if (menuVisible) {
+        // Keep cursor yellow when menu is open
+        const crossEl = document.getElementById('cursor-cross');
+        if (crossEl) {
+            crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+        }
+        
         const container = document.getElementById('part-menu-container');
         if (container) {
             // Calculate subtle offset based on mouse position relative to screen center
