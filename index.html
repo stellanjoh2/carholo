@@ -740,35 +740,32 @@
     <div id="canvas-container"></div>
     <script type="module" src="main.js"></script>
     <script>
-        // Mobile detection - only for actual mobile devices (phones/tablets), not laptops
+        // Mobile detection - ONLY for actual mobile devices (phones/tablets), NEVER for laptops/desktops
         function isMobileDevice() {
-            const userAgent = navigator.userAgent.toLowerCase();
+            const ua = navigator.userAgent;
             
-            // First, explicitly exclude desktop/laptop OS patterns
-            const isDesktopOS = /macintosh|windows|linux/i.test(navigator.userAgent) && 
-                                !/iphone|ipad|ipod|android/i.test(navigator.userAgent);
-            
-            // If it's a desktop OS (Mac, Windows, Linux that isn't mobile), never show mobile message
-            if (isDesktopOS) {
-                return false;
+            // EXPLICITLY exclude all desktop/laptop OS patterns first
+            // MacBooks: Contains "Macintosh" or "Mac OS" but NOT iPhone/iPad/iPod
+            if (/Macintosh|Mac OS|MacIntel/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+                return false; // MacBook/laptop
             }
             
-            // Check user agent for mobile devices (most reliable)
-            const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
-            
-            // Only show message if explicitly mobile user agent
-            // Additional safety check: screen size must be small (mobile-like)
-            if (isMobileUserAgent) {
-                const screenWidth = window.innerWidth;
-                const screenHeight = window.innerHeight;
-                // Even if mobile user agent, only show if screen is actually mobile-sized
-                // This prevents iPads in desktop mode or resized browser windows from triggering
-                const isActuallySmallScreen = screenWidth <= 1024 && screenHeight <= 800;
-                return isActuallySmallScreen;
+            // Windows laptops/desktops
+            if (/Windows/i.test(ua) && !/Windows Phone|IEMobile/i.test(ua)) {
+                return false; // Windows laptop/desktop
             }
             
-            // Default: not mobile
-            return false;
+            // Linux desktops (but allow Android which is Linux-based)
+            if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+                return false; // Linux desktop
+            }
+            
+            // ONLY return true for explicit mobile device user agents
+            const mobilePatterns = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|webOS/i;
+            const isMobile = mobilePatterns.test(ua);
+            
+            // If not explicitly mobile, it's a desktop/laptop - return false
+            return isMobile;
         }
         
         // Apply mobile detection on page load
