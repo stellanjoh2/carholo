@@ -24,6 +24,47 @@
             cursor: none; /* hide default cursor */
         }
         
+        /* Mobile message overlay */
+        #mobile-message {
+            display: none; /* Hidden by default */
+            position: fixed;
+            inset: 0;
+            z-index: 99999; /* Above everything */
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        
+        #mobile-message.active {
+            display: flex;
+        }
+        
+        #mobile-message-text {
+            color: #ffd700;
+            font-size: 24px;
+            text-align: center;
+            padding: 40px;
+            line-height: 1.6;
+            font-weight: 700;
+        }
+        
+        /* Hide all UI elements on mobile */
+        body.mobile #cursor-cross,
+        body.mobile #tooltip,
+        body.mobile #part-container,
+        body.mobile .music-player,
+        body.mobile .fullscreen-button,
+        body.mobile .rotate-button,
+        body.mobile .info-button,
+        body.mobile #part-menu-overlay,
+        body.mobile #ui-cog-container,
+        body.mobile #loading-overlay {
+            display: none !important;
+        }
+        
         canvas {
             display: block;
             cursor: none;
@@ -615,6 +656,10 @@
     </style>
 </head>
 <body>
+    <!-- Mobile message overlay -->
+    <div id="mobile-message">
+        <div id="mobile-message-text">im sorry this is for real computers only - no phones</div>
+    </div>
     <div id="part-container">
         <div id="part-name"></div>
         <div id="part-info"></div>
@@ -663,12 +708,37 @@
     <div id="canvas-container"></div>
     <script type="module" src="main.js"></script>
     <script>
-        // Follow mouse with cross
-        const cross = document.getElementById('cursor-cross');
-        window.addEventListener('mousemove', (e) => {
-            cross.style.left = e.clientX + 'px';
-            cross.style.top = e.clientY + 'px';
-        });
+        // Mobile detection
+        function isMobileDevice() {
+            // Check user agent for mobile devices
+            const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            // Check touch capability
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            // Check screen size (optional - phones are typically < 768px)
+            const isSmallScreen = window.innerWidth < 768;
+            
+            return isMobileUserAgent || (isTouchDevice && isSmallScreen);
+        }
+        
+        // Apply mobile detection on page load
+        if (isMobileDevice()) {
+            document.body.classList.add('mobile');
+            document.getElementById('mobile-message').classList.add('active');
+            // Disable pointer events on canvas to prevent interaction
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+                canvas.style.pointerEvents = 'none';
+            }
+        }
+        
+        // Follow mouse with cross (only on non-mobile)
+        if (!isMobileDevice()) {
+            const cross = document.getElementById('cursor-cross');
+            window.addEventListener('mousemove', (e) => {
+                cross.style.left = e.clientX + 'px';
+                cross.style.top = e.clientY + 'px';
+            });
+        }
     </script>
 </body>
 </html>

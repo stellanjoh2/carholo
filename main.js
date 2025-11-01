@@ -56,6 +56,23 @@ const CONFIG = {
 };
 
 // ============================================================================
+// MOBILE DETECTION
+// ============================================================================
+
+function isMobileDevice() {
+    // Check user agent for mobile devices
+    const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Check touch capability
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // Check screen size (optional - phones are typically < 768px)
+    const isSmallScreen = window.innerWidth < 768;
+    
+    return isMobileUserAgent || (isTouchDevice && isSmallScreen);
+}
+
+const IS_MOBILE = isMobileDevice();
+
+// ============================================================================
 // SCENE SETUP
 // ============================================================================
 
@@ -94,56 +111,65 @@ if (container) {
 // ============================================================================
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.enablePan = true;
-controls.panSpeed = 0.8;
-controls.screenSpacePanning = true;
-controls.mouseButtons = {
-    LEFT: THREE.MOUSE.ROTATE,
-    MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN
-};
-controls.keys = {
-    LEFT: 'ArrowLeft',
-    UP: 'ArrowUp',
-    RIGHT: 'ArrowRight',
-    BOTTOM: 'ArrowDown'
-};
+// Disable controls on mobile - keep 3D scene visible but non-interactive
+if (IS_MOBILE) {
+    controls.enabled = false;
+    // Disable pointer events on canvas
+    renderer.domElement.style.pointerEvents = 'none';
+} else {
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enablePan = true;
+    controls.panSpeed = 0.8;
+    controls.screenSpacePanning = true;
+    controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN
+    };
+    controls.keys = {
+        LEFT: 'ArrowLeft',
+        UP: 'ArrowUp',
+        RIGHT: 'ArrowRight',
+        BOTTOM: 'ArrowDown'
+    };
+}
 
 // Track interaction state for menu/click detection
 let isDragging = false;
 let cameraIsBeingRotated = false;
 let lastCameraRotationTime = 0;
 
-controls.addEventListener('start', () => {
-    cameraIsBeingRotated = true;
-    isDragging = true;
-    lastCameraRotationTime = Date.now();
-});
+if (!IS_MOBILE) {
+    controls.addEventListener('start', () => {
+        cameraIsBeingRotated = true;
+        isDragging = true;
+        lastCameraRotationTime = Date.now();
+    });
 
-controls.addEventListener('end', () => {
-    cameraIsBeingRotated = false;
-});
+    controls.addEventListener('end', () => {
+        cameraIsBeingRotated = false;
+    });
 
-// Modifier key support for panning (CMD/Ctrl + left mouse)
-const domElement = renderer.domElement;
-let isModifierPressed = false;
+    // Modifier key support for panning (CMD/Ctrl + left mouse)
+    const domElement = renderer.domElement;
+    let isModifierPressed = false;
 
-domElement.addEventListener('mousedown', (event) => {
-    isModifierPressed = event.metaKey || event.ctrlKey;
-    if (isModifierPressed && event.button === 0) {
-        controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
-    } else if (!isModifierPressed && event.button === 0) {
-        controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-    }
-});
+    domElement.addEventListener('mousedown', (event) => {
+        isModifierPressed = event.metaKey || event.ctrlKey;
+        if (isModifierPressed && event.button === 0) {
+            controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+        } else if (!isModifierPressed && event.button === 0) {
+            controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+        }
+    });
 
-domElement.addEventListener('mouseup', () => {
-    if (!isModifierPressed) {
-        controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-    }
-});
+    domElement.addEventListener('mouseup', () => {
+        if (!isModifierPressed) {
+            controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+        }
+    });
+}
 
 // ============================================================================
 // LIGHTING UTILITIES
@@ -1284,6 +1310,8 @@ document.addEventListener('click', () => {
 }, { once: true });
 
 function onMouseMove(event) {
+    // Disable hover interactions on mobile
+    if (IS_MOBILE) return;
     // Update tooltip position
     const tooltip = document.getElementById('tooltip');
     if (tooltip) {
@@ -2153,7 +2181,10 @@ function onMouseMove(event) {
     }
 }
 
-window.addEventListener('mousemove', onMouseMove);
+// Only enable mouse interactions on desktop
+if (!IS_MOBILE) {
+    window.addEventListener('mousemove', onMouseMove);
+}
 
 // Part menu state and click detection
 let clickedMesh = null;
@@ -2197,11 +2228,17 @@ function checkDrag(event) {
 // Note: lastCameraRotationTime is tracked in OrbitControls 'start' event above
 // This ensures we only track manual user rotation, not auto-rotation
 
-window.addEventListener('mousedown', onMouseDown);
+// Only enable mouse interactions on desktop
+if (!IS_MOBILE) {
+    window.addEventListener('mousedown', onMouseDown);
+}
+
 // Note: We don't add a separate mousemove handler - we'll check drag in the click handler
 // The existing onMouseMove handler handles normal mouse tracking
 
 function onMouseClick(event) {
+    // Disable clicks on mobile
+    if (IS_MOBILE) return;
     // Check if clicking on UI elements (don't trigger menu on UI clicks)
     const target = event.target;
     if (target.closest('#part-menu-overlay') || 
@@ -2300,7 +2337,10 @@ function onMouseClick(event) {
     }
 }
 
-window.addEventListener('click', onMouseClick);
+// Only enable mouse interactions on desktop
+if (!IS_MOBILE) {
+    window.addEventListener('click', onMouseClick);
+}
 
 // Close menu with ESC key
 window.addEventListener('keydown', (event) => {
