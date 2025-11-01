@@ -614,6 +614,14 @@ let lockRingAnim = {
     toOpacity: 0.0
 };
 
+// ============================================================================
+// FEATURE FLAGS
+// ============================================================================
+
+const ENABLE_HOVER_LIGHT = true;
+const ENABLE_SPOT_SHADOW = false;
+const ENABLE_GHOST_POINTS = false;
+
 let infoPanelEnabled = true;
 let autoRotateEnabled = true;
 let assetsReady = false;
