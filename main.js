@@ -2658,6 +2658,9 @@ function hidePartMenu() {
             overlay.classList.remove('visible');
             menuVisible = false;
             
+            // Restore OS cursor when menu closes
+            document.body.classList.remove('menu-open');
+            
             // Restore clicked mesh material when menu closes
             if (clickedMesh && clickedMeshOriginalMaterial) {
                 // Only restore if mesh is not currently hovered

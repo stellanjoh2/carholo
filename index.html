@@ -466,10 +466,17 @@
             opacity: 0;
             pointer-events: none;
             display: none; /* Hidden by default */
+            cursor: none !important; /* Force hide OS cursor */
         }
         #part-menu-overlay.visible {
             display: block; /* Show when visible */
             pointer-events: all;
+            cursor: none !important; /* Force hide OS cursor when visible */
+        }
+        /* Force hide cursor on body and all elements when menu is open */
+        body.menu-open,
+        body.menu-open * {
+            cursor: none !important;
         }
         #part-menu-backdrop {
             position: absolute;
