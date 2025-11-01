@@ -1329,9 +1329,9 @@ function onMouseMove(event) {
             }
         }
         
-        // Clear any existing hover states
-        if (hoveredMesh) {
-            // Restore original material
+        // Clear any existing hover states (but keep clicked mesh emissive)
+        if (hoveredMesh && hoveredMesh !== clickedMesh) {
+            // Restore original material (don't clear clickedMesh)
             if (hoveredMesh.userData.originalMaterial) {
                 if (hoveredMesh.material) {
                     hoveredMesh.material.dispose();
@@ -2362,13 +2362,17 @@ function showPartMenu(mesh) {
     autoRotateStateBeforeMenu = autoRotateEnabled;
     autoRotateEnabled = false;
     
-    // Keep clicked mesh emissive while menu is open
+    // Keep clicked mesh emissive while menu is open - DO THIS FIRST before menuVisible
     if (mesh && mesh.isMesh && mesh.material) {
         // Store original material if not already stored
-        if (!clickedMeshOriginalMaterial && mesh.userData.originalMaterial) {
-            clickedMeshOriginalMaterial = mesh.userData.originalMaterial.clone();
-        } else if (!clickedMeshOriginalMaterial) {
-            clickedMeshOriginalMaterial = mesh.material.clone();
+        if (!clickedMeshOriginalMaterial) {
+            if (mesh.userData.originalMaterial) {
+                clickedMeshOriginalMaterial = mesh.userData.originalMaterial.clone();
+            } else {
+                // If mesh currently has wireframe material from hover, we need to find the real original
+                // Otherwise clone current material
+                clickedMeshOriginalMaterial = mesh.material.clone();
+            }
         }
         
         // Determine status color based on mesh UUID (same logic as hover)
@@ -2386,19 +2390,37 @@ function showPartMenu(mesh) {
             statusColor = 0x44ff44; // Green for good status
         }
         
-        // Ensure mesh has emissive material while menu is open
-        if (!mesh.material.emissive || !mesh.material.emissiveIntensity || 
-            mesh.material.emissive.getHex() !== statusColor) {
-            // Clone current material and apply emissive
-            if (mesh.material.dispose) {
-                const oldMat = mesh.material;
-                mesh.material = oldMat.clone();
-                oldMat.dispose();
-            } else {
-                mesh.material = mesh.material.clone();
+        // Apply emissive material (keep wireframe if it's already there, otherwise make it emissive)
+        const currentMat = mesh.material;
+        let needsNewMaterial = true;
+        
+        // Check if it already has the right emissive
+        if (currentMat.emissive && currentMat.emissiveIntensity && 
+            currentMat.emissive.getHex() === statusColor && 
+            Math.abs(currentMat.emissiveIntensity - 7.5) < 0.1) {
+            needsNewMaterial = false;
+        }
+        
+        if (needsNewMaterial) {
+            // Create or clone material with emissive
+            const emissiveMat = currentMat.wireframe ? 
+                new THREE.MeshStandardMaterial({
+                    color: statusColor,
+                    wireframe: true,
+                    emissive: statusColor,
+                    emissiveIntensity: 7.5
+                }) :
+                currentMat.clone();
+            
+            if (!currentMat.wireframe) {
+                emissiveMat.emissive = new THREE.Color(statusColor);
+                emissiveMat.emissiveIntensity = 7.5;
             }
-            mesh.material.emissive = new THREE.Color(statusColor);
-            mesh.material.emissiveIntensity = 7.5;
+            
+            if (currentMat.dispose) {
+                currentMat.dispose();
+            }
+            mesh.material = emissiveMat;
         }
     }
     
