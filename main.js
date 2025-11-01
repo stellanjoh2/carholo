@@ -1089,7 +1089,7 @@ async function loadPartSelectSound() {
         initAudioContext();
         if (!audioContext) return;
         
-        const response = await fetch('63138__uzerx__sub-a-2-secs.wav');
+        const response = await fetch('419823__glaneur-de-sons__bbb-soft-05.wav');
         const arrayBuffer = await response.arrayBuffer();
         partSelectSoundBuffer = await audioContext.decodeAudioData(arrayBuffer);
         
@@ -2486,12 +2486,11 @@ function showPartMenu(mesh) {
     }
     
     // Play part selection sound (forward) - non-blocking, won't prevent popup from opening
-    // Muted for now - user will find replacement sound later
-    // try {
-    //     playPartSelectSound(false);
-    // } catch (error) {
-    //     console.warn('Failed to play part selection sound:', error);
-    // }
+    try {
+        playPartSelectSound(false);
+    } catch (error) {
+        console.warn('Failed to play part selection sound:', error);
+    }
     
     // Pause car rotation when menu opens
     autoRotateStateBeforeMenu = autoRotateEnabled;
