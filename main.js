@@ -2425,6 +2425,13 @@ function showPartMenu(mesh) {
     }
     
     menuVisible = true;
+    
+    // Hide tooltip when menu opens
+    const tooltip = document.getElementById('tooltip');
+    if (tooltip) {
+        tooltip.classList.remove('visible');
+    }
+    
     const overlay = document.getElementById('part-menu-overlay');
     const container = document.getElementById('part-menu-container');
     const title = document.getElementById('part-menu-title');
