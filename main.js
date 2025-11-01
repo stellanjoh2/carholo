@@ -44,7 +44,7 @@ const CONFIG = {
     },
     FOG: {
         COLOR: 0xff8c00, // 25% more yellow (from 0xff6600)
-        DENSITY: 0.06
+        DENSITY: 0.0363 // Another 10% increase (0.033 * 1.1)
     },
     CLICK: {
         THRESHOLD: 10,
@@ -210,17 +210,18 @@ function kelvinToRgb(kelvin) {
 }
 
 /**
- * Interpolates a color 25% towards yellow
+ * Interpolates a color towards yellow by a specified percentage
  * @param {THREE.Color} color - Source color
- * @returns {THREE.Color} Color pushed 25% towards yellow
+ * @param {number} amount - Percentage towards yellow (0.0 to 1.0), defaults to 0.25
+ * @returns {THREE.Color} Color pushed towards yellow
  */
-function pushColorTowardsYellow(color) {
+function pushColorTowardsYellow(color, amount = 0.25) {
     const yellow = new THREE.Color(0xffff00); // Pure yellow
     const result = color.clone();
-    // Interpolate 25% towards yellow
-    result.r += (yellow.r - color.r) * 0.25;
-    result.g += (yellow.g - color.g) * 0.25;
-    result.b += (yellow.b - color.b) * 0.25;
+    // Interpolate towards yellow by specified amount
+    result.r += (yellow.r - color.r) * amount;
+    result.g += (yellow.g - color.g) * amount;
+    result.b += (yellow.b - color.b) * amount;
     return result;
 }
 
@@ -1803,12 +1804,12 @@ function onMouseMove(event) {
                         // Re-apply properties to prevent loss over time
                         if (hoveredMesh.material.isMeshPhysicalMaterial) {
                             hoveredMesh.material.envMap = scene.environment;
-                            hoveredMesh.material.envMapIntensity = 1.0;
+                            hoveredMesh.material.envMapIntensity = 1.2; // 20% brighter (1.0 * 1.2)
                             hoveredMesh.material.roughness = 0.0;
                             hoveredMesh.material.metalness = 1.0;
-                            hoveredMesh.material.sheen = 2.0;
+                            hoveredMesh.material.sheen = 2.5; // 25% brighter Fresnel (2.0 * 1.25)
                             hoveredMesh.material.sheenRoughness = 0.3;
-                            hoveredMesh.material.sheenColor = new THREE.Color(0xff8c00); // Match updated Fresnel color
+                            hoveredMesh.material.sheenColor = new THREE.Color(0xffd700); // UI yellow (matching UI elements)
                             hoveredMesh.material.iridescence = 1.0;
                             hoveredMesh.material.iridescenceIOR = 1.3;
                             hoveredMesh.material.iridescenceThicknessRange = [100, 500];
@@ -2005,8 +2006,8 @@ function onMouseMove(event) {
                             const worldCenter = worldBbox.getCenter(new THREE.Vector3());
                             const worldSize = worldBbox.getSize(new THREE.Vector3());
                             const largestDim = Math.max(worldSize.x, worldSize.y, worldSize.z);
-                            const lightDistance = Math.max(2.0, largestDim * 4.0);
-                            const lightIntensity = 1.6;
+                            const lightDistance = Math.max(2.0, largestDim * 4.0) * 1.2; // 20% larger radius
+                            const lightIntensity = 1.6 * 0.5; // 50% reduced intensity (from 1.6)
                             cleanupHoverLights();
                             if (!hoverPointLight) {
                                 hoverPointLight = new THREE.PointLight(statusColor, lightIntensity, lightDistance);
@@ -3582,9 +3583,9 @@ loader.load(
                             envMap: scene.environment,
                         clearcoat: 1.0,
                             clearcoatRoughness: 0.0,
-                            sheen: 2.0,
+                            sheen: 2.5, // 25% brighter Fresnel (2.0 * 1.25)
                             sheenRoughness: 0.3,
-                            sheenColor: new THREE.Color(0xff8c00), // Match updated Fresnel color
+                            sheenColor: new THREE.Color(0xffd700), // UI yellow (matching UI elements)
                             iridescence: 1.0,
                             iridescenceIOR: 1.3,
                             iridescenceThicknessRange: [100, 500],
@@ -3662,19 +3663,23 @@ loader.load(
                 // Do NOT overwrite any glass we just set up
                 if (child.material && !child.userData.isGlass) {
                     // Convert to MeshPhysicalMaterial with black, slightly transparent, but highly reflective
+                    // Increase brightness by 20% - brighter base color and envMapIntensity
+                    const baseColor = new THREE.Color(0x333333);
+                    baseColor.multiplyScalar(1.2); // 20% brighter color
+                    
                     const physicalMaterial = new THREE.MeshPhysicalMaterial({
-                        color: 0x333333, // Dark gray instead of black for better visibility
+                        color: baseColor, // 20% brighter dark gray
                         opacity: 0.9, // Less transparent
                         transparent: true,
                         roughness: 0.0, // Perfectly smooth for maximum reflections
                         metalness: 1.0, // Fully metallic
-                        envMapIntensity: 1.0, // Normal reflection intensity
+                        envMapIntensity: 1.2, // 20% brighter reflection intensity (1.0 * 1.2)
                         envMap: scene.environment, // Use HDRI environment
                         clearcoat: 1.0, // Maximum clearcoat for glossy reflections
                         clearcoatRoughness: 0.0, // Perfectly smooth clearcoat
-                        sheen: 2.0, // Moderate hologram-like Fresnel
+                        sheen: 2.5, // 25% brighter Fresnel (2.0 * 1.25)
                         sheenRoughness: 0.3, // Balanced Fresnel effect
-                        sheenColor: new THREE.Color(0xff8c00), // Orange Fresnel edge (25% more yellow)
+                        sheenColor: new THREE.Color(0xffd700), // UI yellow (matching UI elements)
                         iridescence: 1.0, // Moderate iridescence intensity
                         iridescenceIOR: 1.3, // Standard refraction
                         iridescenceThicknessRange: [100, 500] // Balanced range for rainbow effects
@@ -4636,10 +4641,10 @@ function animate() {
                     // Ensure Fresnel and HDRI are never disabled
                     if (currentMesh.material.isMeshPhysicalMaterial) {
                         currentMesh.material.envMap = scene.environment;
-                        currentMesh.material.envMapIntensity = 1.0;
-                        currentMesh.material.sheen = 2.0;
+                        currentMesh.material.envMapIntensity = 1.2; // 20% brighter (1.0 * 1.2)
+                        currentMesh.material.sheen = 2.5; // 25% brighter Fresnel (2.0 * 1.25)
                         currentMesh.material.sheenRoughness = 0.3;
-                        currentMesh.material.sheenColor = new THREE.Color(0xff6600);
+                        currentMesh.material.sheenColor = new THREE.Color(0xffd700); // UI yellow (matching UI elements)
                         currentMesh.material.iridescence = 1.0;
                         currentMesh.material.iridescenceIOR = 1.3;
                     }
@@ -4657,12 +4662,12 @@ function animate() {
                         // Re-apply properties to prevent loss over time
                         if (prevMesh.material.isMeshPhysicalMaterial) {
                             prevMesh.material.envMap = scene.environment;
-                            prevMesh.material.envMapIntensity = 1.0;
+                            prevMesh.material.envMapIntensity = 1.2; // 20% brighter (1.0 * 1.2)
                             prevMesh.material.roughness = 0.0;
                             prevMesh.material.metalness = 1.0;
-                            prevMesh.material.sheen = 2.0;
+                            prevMesh.material.sheen = 2.5; // 25% brighter Fresnel (2.0 * 1.25)
                             prevMesh.material.sheenRoughness = 0.3;
-                            prevMesh.material.sheenColor = new THREE.Color(0xff6600);
+                            prevMesh.material.sheenColor = new THREE.Color(0xffd700); // UI yellow (matching UI elements)
                             prevMesh.material.iridescence = 1.0;
                             prevMesh.material.iridescenceIOR = 1.3;
                             prevMesh.material.iridescenceThicknessRange = [100, 500];
