@@ -2431,65 +2431,88 @@ function showPartMenu(mesh) {
         const partSize = bbox.getSize(new THREE.Vector3());
         const maxSize = Math.max(partSize.x, partSize.y, partSize.z);
         
-        // Calculate camera position: offset from part center to zoom in
-        // Position camera closer to the part (1.5x the largest dimension away)
-        const cameraOffset = new THREE.Vector3(0, 0, maxSize * 1.5);
-        const cameraDirection = camera.position.clone().sub(partCenter).normalize();
-        // If camera is too close to part center, use default direction
-        if (cameraDirection.length() < 0.1) {
+        // Ensure we have a valid size
+        const safeSize = maxSize > 0.001 ? maxSize : 1.0;
+        
+        // Calculate direction from part center to current camera position
+        const currentToPart = camera.position.clone().sub(partCenter);
+        let cameraDirection = currentToPart.clone().normalize();
+        
+        // If direction is invalid or too small, use a default viewing angle
+        if (!cameraDirection.length() || !Number.isFinite(cameraDirection.x) || 
+            Math.abs(cameraDirection.length()) < 0.1) {
             cameraDirection.set(0.3, 0.5, 1).normalize();
         }
         
-        // Calculate new camera position: part center + offset in camera direction
+        // Calculate distance: zoom in closer (about 2-3x the part size)
+        const zoomDistance = safeSize * 2.5;
+        
+        // Calculate new camera position: part center + direction * distance
         const newCameraPos = partCenter.clone().add(
-            cameraDirection.multiplyScalar(maxSize * 1.5)
+            cameraDirection.multiplyScalar(zoomDistance)
         );
         
-        // Animate camera to focus on part
+        // Kill any ongoing camera animation
         if (cameraFocusAnimation) {
             cameraFocusAnimation.kill();
         }
         
-        // Animate camera position and target
-        cameraFocusAnimation = gsap.to({}, {
-            duration: 1.0,
-            ease: 'power2.inOut',
-            onUpdate: function() {
-                // GSAP will tween the values
-            }
-        });
-        
         // Create animation objects for GSAP to tween
-        const camPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
-        const camTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
-        const targetPos = { x: newCameraPos.x, y: newCameraPos.y, z: newCameraPos.z };
-        const targetTarget = { x: partCenter.x, y: partCenter.y, z: partCenter.z };
+        const camPos = { 
+            x: camera.position.x, 
+            y: camera.position.y, 
+            z: camera.position.z 
+        };
+        const camTarget = { 
+            x: controls.target.x, 
+            y: controls.target.y, 
+            z: controls.target.z 
+        };
+        const targetPos = { 
+            x: newCameraPos.x, 
+            y: newCameraPos.y, 
+            z: newCameraPos.z 
+        };
+        const targetTarget = { 
+            x: partCenter.x, 
+            y: partCenter.y, 
+            z: partCenter.z 
+        };
         
-        // Animate camera position
-        gsap.to(camPos, {
-            x: targetPos.x,
-            y: targetPos.y,
-            z: targetPos.z,
-            duration: 1.0,
-            ease: 'power2.inOut',
-            onUpdate: () => {
-                camera.position.set(camPos.x, camPos.y, camPos.z);
-                camera.updateProjectionMatrix();
-            }
-        });
+        // Create timeline for synchronized animation
+        const cameraTimeline = gsap.timeline();
         
-        // Animate camera target (what it's looking at)
-        gsap.to(camTarget, {
-            x: targetTarget.x,
-            y: targetTarget.y,
-            z: targetTarget.z,
-            duration: 1.0,
-            ease: 'power2.inOut',
-            onUpdate: () => {
-                controls.target.set(camTarget.x, camTarget.y, camTarget.z);
-                controls.update();
-            }
-        });
+        // Animate camera position and target together
+        cameraTimeline
+            .to(camPos, {
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z,
+                duration: 1.0,
+                ease: 'power2.inOut',
+                onUpdate: () => {
+                    if (Number.isFinite(camPos.x) && Number.isFinite(camPos.y) && Number.isFinite(camPos.z)) {
+                        camera.position.set(camPos.x, camPos.y, camPos.z);
+                        camera.updateProjectionMatrix();
+                    }
+                }
+            }, 0) // Start at time 0
+            .to(camTarget, {
+                x: targetTarget.x,
+                y: targetTarget.y,
+                z: targetTarget.z,
+                duration: 1.0,
+                ease: 'power2.inOut',
+                onUpdate: () => {
+                    if (Number.isFinite(camTarget.x) && Number.isFinite(camTarget.y) && Number.isFinite(camTarget.z)) {
+                        controls.target.set(camTarget.x, camTarget.y, camTarget.z);
+                        controls.update();
+                    }
+                }
+            }, 0); // Start at time 0 (same time as position)
+        
+        // Store timeline reference
+        cameraFocusAnimation = cameraTimeline;
     }
     
     // Keep clicked mesh emissive while menu is open - DO THIS FIRST before menuVisible
