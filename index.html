@@ -95,12 +95,8 @@
             background-repeat: no-repeat;
             background-position: center;
         }
-        /* Hovering state turns cross red */
-        #cursor-cross.hovering {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Cpath d='M 24 0 L 26 0 L 26 24 L 50 24 L 50 26 L 26 26 L 26 50 L 24 50 L 24 26 L 0 26 L 0 24 L 24 24 Z' fill='%23ff0000' stroke='%23000000' stroke-width='2'/%3E%3C/svg%3E");
-        }
         
-        /* Cursor color states - these override the default yellow */
+        /* Cursor color states - these override the default yellow, order matters for specificity */
         #cursor-cross.warning {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Cpath d='M 24 0 L 26 0 L 26 24 L 50 24 L 50 26 L 26 26 L 26 50 L 24 50 L 24 26 L 0 26 L 0 24 L 24 24 Z' fill='%23ff4444' stroke='%23000000' stroke-width='2'/%3E%3C/svg%3E");
         }
@@ -112,6 +108,8 @@
         #cursor-cross.neutral {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Cpath d='M 24 0 L 26 0 L 26 24 L 50 24 L 50 26 L 26 26 L 26 50 L 24 50 L 24 26 L 0 26 L 0 24 L 24 24 Z' fill='%23ffd700' stroke='%23000000' stroke-width='2'/%3E%3C/svg%3E");
         }
+        
+        /* Hovering state - removed as it conflicts with status colors */
         
         /* Tooltip styling */
         #tooltip {
