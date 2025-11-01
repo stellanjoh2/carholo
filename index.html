@@ -58,8 +58,11 @@
             top: 50%;
             background: #ffd700; /* neon yellow */
             transform: translate(-50%, -50%);
-            outline: 1px solid rgba(0, 0, 0, 0.25); /* Black stroke at 0.25 opacity */
-            outline-offset: -0.5px; /* Make outline sit on edge */
+            /* Black stroke using multiple box-shadows for visibility */
+            box-shadow: 
+                0 0 0 0.5px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(0, 0, 0, 0.25),
+                0 0 0 1.5px rgba(0, 0, 0, 0.15);
         }
         /* Hovering state turns cross red */
         #cursor-cross.hovering::before,
