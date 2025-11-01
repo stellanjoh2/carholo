@@ -2429,6 +2429,13 @@ function showPartMenu(mesh) {
     // Force hide OS cursor when menu opens
     document.body.classList.add('menu-open');
     
+    // Reset custom cursor to default yellow when menu opens
+    const crossEl = document.getElementById('cursor-cross');
+    if (crossEl) {
+        crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+        // Keep it at default yellow (no class = yellow)
+    }
+    
     // Hide tooltip when menu opens
     const tooltip = document.getElementById('tooltip');
     if (tooltip) {
