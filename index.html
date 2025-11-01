@@ -39,7 +39,7 @@
             z-index: 0;
         }
 
-        /* Yellow cross cursor */
+        /* Yellow cross cursor - single unified shape */
         #cursor-cross {
             position: fixed;
             left: 0;
@@ -49,51 +49,37 @@
             pointer-events: none;
             z-index: 10000; /* Higher than menu overlay (9999) to be visible on top */
             transform: translate(-50%, -50%);
-        }
-        #cursor-cross::before,
-        #cursor-cross::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            background: #ffd700; /* neon yellow */
-            transform: translate(-50%, -50%);
-            /* Black stroke using multiple box-shadows for visibility */
-            box-shadow: 
-                0 0 0 0.5px rgba(0, 0, 0, 0.25),
-                0 0 0 1px rgba(0, 0, 0, 0.25),
-                0 0 0 1.5px rgba(0, 0, 0, 0.15);
+            /* Create cross using linear-gradient - single unified shape */
+            background: 
+                linear-gradient(#ffd700, #ffd700) 24px 0 / 2px 50px no-repeat,
+                linear-gradient(#ffd700, #ffd700) 0 24px / 50px 2px no-repeat;
+            /* Black stroke applied once to entire shape */
+            filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.25)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.25));
         }
         /* Hovering state turns cross red */
-        #cursor-cross.hovering::before,
-        #cursor-cross.hovering::after {
-            background: #ff0000;
+        #cursor-cross.hovering {
+            background: 
+                linear-gradient(#ff0000, #ff0000) 24px 0 / 2px 50px no-repeat,
+                linear-gradient(#ff0000, #ff0000) 0 24px / 50px 2px no-repeat;
         }
         
         /* Cursor color states */
-        #cursor-cross.warning::before,
-        #cursor-cross.warning::after {
-            background: #ff4444; /* Red for warnings */
+        #cursor-cross.warning {
+            background: 
+                linear-gradient(#ff4444, #ff4444) 24px 0 / 2px 50px no-repeat,
+                linear-gradient(#ff4444, #ff4444) 0 24px / 50px 2px no-repeat;
         }
         
-        #cursor-cross.good::before,
-        #cursor-cross.good::after {
-            background: #44ff44; /* Green for good status */
+        #cursor-cross.good {
+            background: 
+                linear-gradient(#44ff44, #44ff44) 24px 0 / 2px 50px no-repeat,
+                linear-gradient(#44ff44, #44ff44) 0 24px / 50px 2px no-repeat;
         }
         
-        #cursor-cross.neutral::before,
-        #cursor-cross.neutral::after {
-            background: #ffd700; /* Yellow for neutral status */
-        }
-        /* vertical bar */
-        #cursor-cross::before {
-            width: 2px;
-            height: 50px;
-        }
-        /* horizontal bar */
-        #cursor-cross::after {
-            width: 50px;
-            height: 2px;
+        #cursor-cross.neutral {
+            background: 
+                linear-gradient(#ffd700, #ffd700) 24px 0 / 2px 50px no-repeat,
+                linear-gradient(#ffd700, #ffd700) 0 24px / 50px 2px no-repeat;
         }
         
         /* Tooltip styling */
