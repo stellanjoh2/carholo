@@ -24,20 +24,17 @@
             cursor: none; /* hide default cursor */
         }
         
-        /* Mobile message overlay */
+        /* Mobile message overlay - HIDDEN by default */
         #mobile-message {
-            display: none; /* Hidden by default */
+            display: none !important; /* Always hidden - mobile message is disabled */
             position: fixed;
             inset: 0;
             z-index: 99999; /* Above everything */
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(10px);
-            /* Perfect centering */
-            display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            /* Ensure proper centering on all devices */
             left: 0;
             top: 0;
             right: 0;
@@ -47,7 +44,7 @@
         }
         
         #mobile-message.active {
-            display: flex;
+            display: none !important; /* Keep it hidden even with active class */
         }
         
         #mobile-message-text {
