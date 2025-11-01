@@ -908,6 +908,102 @@ let tooltipTypewriterSpeed = 1.5; // characters per frame (slower)
 const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
 hoverSound.volume = 0.3;
 
+// Web Audio API sound generator for retro/digital UI sounds
+let audioContext = null;
+let soundThrottleLastPlayed = {};
+const SOUND_THROTTLE = 50; // Minimum ms between same sound type
+
+// Initialize audio context on first user interaction (browser requirement)
+function initAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // Resume if suspended (browsers suspend audio context until user interaction)
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+}
+
+function createUISound(type) {
+    // Initialize audio context if needed
+    initAudioContext();
+    
+    if (!audioContext) return;
+    
+    const now = performance.now();
+    if (soundThrottleLastPlayed[type] && (now - soundThrottleLastPlayed[type]) < SOUND_THROTTLE) {
+        return; // Throttle rapid sounds
+    }
+    soundThrottleLastPlayed[type] = now;
+    
+    const now_time = audioContext.currentTime;
+    const masterVolume = 0.15; // Subtle volume
+    
+    switch(type) {
+        case 'reveal':
+            // Short digital pop/click with upward sweep
+            const osc1 = audioContext.createOscillator();
+            const gain1 = audioContext.createGain();
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(800, now_time);
+            osc1.frequency.exponentialRampToValueAtTime(1200, now_time + 0.08);
+            gain1.gain.setValueAtTime(0, now_time);
+            gain1.gain.linearRampToValueAtTime(masterVolume * 0.6, now_time + 0.01);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now_time + 0.08);
+            osc1.connect(gain1);
+            gain1.connect(audioContext.destination);
+            osc1.start(now_time);
+            osc1.stop(now_time + 0.08);
+            break;
+            
+        case 'close':
+            // Reverse reveal - downward sweep
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(1200, now_time);
+            osc2.frequency.exponentialRampToValueAtTime(600, now_time + 0.1);
+            gain2.gain.setValueAtTime(0, now_time);
+            gain2.gain.linearRampToValueAtTime(masterVolume * 0.5, now_time + 0.01);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now_time + 0.1);
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.start(now_time);
+            osc2.stop(now_time + 0.1);
+            break;
+            
+        case 'hover':
+            // Short digital blip/click
+            const osc3 = audioContext.createOscillator();
+            const gain3 = audioContext.createGain();
+            osc3.type = 'sine';
+            osc3.frequency.setValueAtTime(1200, now_time);
+            gain3.gain.setValueAtTime(0, now_time);
+            gain3.gain.linearRampToValueAtTime(masterVolume * 0.4, now_time + 0.005);
+            gain3.gain.exponentialRampToValueAtTime(0.001, now_time + 0.03);
+            osc3.connect(gain3);
+            gain3.connect(audioContext.destination);
+            osc3.start(now_time);
+            osc3.stop(now_time + 0.03);
+            break;
+            
+        case 'select':
+            // Fast digital click/blip for button selection
+            const osc4 = audioContext.createOscillator();
+            const gain4 = audioContext.createGain();
+            osc4.type = 'square';
+            osc4.frequency.setValueAtTime(1500, now_time);
+            gain4.gain.setValueAtTime(0, now_time);
+            gain4.gain.linearRampToValueAtTime(masterVolume * 0.5, now_time + 0.002);
+            gain4.gain.exponentialRampToValueAtTime(0.001, now_time + 0.02);
+            osc4.connect(gain4);
+            gain4.connect(audioContext.destination);
+            osc4.start(now_time);
+            osc4.stop(now_time + 0.02);
+            break;
+    }
+}
+
 // UI hover sound throttling (using hoverSound)
 let uiHoverSoundLastPlayed = 0;
 const UI_HOVER_SOUND_THROTTLE = 150; // Minimum ms between plays
@@ -2287,14 +2383,9 @@ function showPartMenu(mesh) {
             feather.replace();
         }
         
-        // Add hover sound to menu options (using part hover sound)
+        // Add hover sound to menu options (digital UI sound)
         optionEl.addEventListener('mouseenter', () => {
-            const now = performance.now();
-            if (now - uiHoverSoundLastPlayed > UI_HOVER_SOUND_THROTTLE) {
-                hoverSound.currentTime = 0;
-                hoverSound.play().catch(e => console.log('Menu hover sound playback failed:', e));
-                uiHoverSoundLastPlayed = now;
-            }
+            createUISound('hover');
         });
         
         optionEl.addEventListener('click', () => {
@@ -2310,10 +2401,11 @@ function showPartMenu(mesh) {
                 });
                 
                 // 3 quick hard blinks (blink on/off 3 times - faster and harder)
-                // Start with opacity 1, then blink off/on 3 times
+                // Start with opacity 1, then blink off/on 3 times with synced sounds
                 for (let i = 0; i < 3; i++) {
                     blinkTimeline
                         .to(optionEl, { opacity: 0, duration: 0.05, ease: 'none' }) // Hard off (fast, no opacity)
+                        .call(() => createUISound('select')) // Sync sound to blink
                         .to(optionEl, { opacity: 1, duration: 0.05, ease: 'none' }); // Hard on (fast)
                 }
             } else {
@@ -2390,24 +2482,25 @@ function showPartMenu(mesh) {
     // Buttons start immediately, overlapping with window reveal (0.25s)
     const optionElements = optionsContainer.querySelectorAll('.part-menu-option');
     
-    // First, show yellow solid field (blink effect)
+    // Simple ease-out entry animation (no bounce)
     optionElements.forEach((el, index) => {
-        gsap.set(el, { opacity: 0, y: 20, scale: 0.95 });
+        gsap.set(el, { opacity: 0, y: -20 }); // Start from top (negative y)
         
-        // Create yellow flash/blink effect before revealing
+        // Clean ease-out animation without bounce
         // Start delay: 0s + stagger offset (buttons start immediately, overlapping with window reveal)
+        gsap.to(el, { 
+            opacity: 1,
+            y: 0,
+            duration: 0.3,
+            delay: 0 + (index * 0.08),
+            ease: 'power1.out' // Simple ease-out, no bounce
+        });
+        
+        // Yellow blink effect (simplified, separate from movement)
         const yellowBlink = gsap.timeline({ delay: 0 + (index * 0.08) });
         yellowBlink
-            .set(el, { backgroundColor: '#ffd700', opacity: 1 }) // Solid yellow blink
-            .to(el, { duration: 0.1, opacity: 0.3 }) // Fade yellow slightly
-            .to(el, { 
-                backgroundColor: 'rgba(255, 215, 0, 0.05)', // Back to normal
-                opacity: 1,
-                y: 0,
-                scale: 1,
-                duration: 0.2,
-                ease: 'power2.out'
-            });
+            .set(el, { backgroundColor: '#ffd700' }) // Solid yellow blink
+            .to(el, { duration: 0.1, backgroundColor: 'rgba(255, 215, 0, 0.05)' }); // Back to normal
     });
     
     // Clear GSAP inline backgroundColor after animation completes so CSS hover works
@@ -2436,7 +2529,6 @@ function hidePartMenu() {
     gsap.to(optionElements, {
         opacity: 0,
         y: -10,
-        scale: 0.95,
         duration: 0.2,
         stagger: 0.03,
         ease: 'power2.in'
