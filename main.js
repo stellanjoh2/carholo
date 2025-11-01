@@ -2486,11 +2486,12 @@ function showPartMenu(mesh) {
     }
     
     // Play part selection sound (forward) - non-blocking, won't prevent popup from opening
-    try {
-        playPartSelectSound(false);
-    } catch (error) {
-        console.warn('Failed to play part selection sound:', error);
-    }
+    // Muted for now - user will find replacement sound later
+    // try {
+    //     playPartSelectSound(false);
+    // } catch (error) {
+    //     console.warn('Failed to play part selection sound:', error);
+    // }
     
     // Pause car rotation when menu opens
     autoRotateStateBeforeMenu = autoRotateEnabled;
