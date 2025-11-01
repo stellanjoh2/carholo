@@ -1159,8 +1159,44 @@ function onMouseMove(event) {
         tooltip.style.top = `${event.clientY}px`;
     }
     
-    // If menu is open, skip hover detection and clear any existing hover states
+    // If menu is open, track mouse for menu follow effect
     if (menuVisible) {
+        const container = document.getElementById('part-menu-container');
+        if (container) {
+            // Calculate subtle offset based on mouse position relative to screen center
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const mouseX = event.clientX;
+            const mouseY = event.clientY;
+            
+            // Calculate normalized offset (-1 to 1 range)
+            const normalizedX = (mouseX - centerX) / centerX;
+            const normalizedY = (mouseY - centerY) / centerY;
+            
+            // Apply subtle follow strength
+            menuMouseFollow.targetX = normalizedX * MENU_MOUSE_FOLLOW_STRENGTH;
+            menuMouseFollow.targetY = normalizedY * MENU_MOUSE_FOLLOW_STRENGTH;
+            
+            // Smoothly animate to target position using GSAP (kill previous animation if exists)
+            const gsap = window.gsap || window.GSAP;
+            if (gsap) {
+                if (menuFollowAnimation) {
+                    menuFollowAnimation.kill();
+                }
+                menuFollowAnimation = gsap.to(menuMouseFollow, {
+                    x: menuMouseFollow.targetX,
+                    y: menuMouseFollow.targetY,
+                    duration: 0.3,
+                    ease: 'power2.out',
+                    onUpdate: () => {
+                        // Apply transform offset to container (preserve GSAP y, add mouse follow)
+                        const gsapY = gsap.getProperty(container, 'y') || 0;
+                        container.style.transform = `translate(calc(-50% + ${menuMouseFollow.x}px), calc(-50% + ${gsapY + menuMouseFollow.y}px))`;
+                    }
+                });
+            }
+        }
+        
         // Clear any existing hover states
         if (hoveredMesh) {
             // Restore original material
@@ -1984,6 +2020,9 @@ window.addEventListener('mousemove', onMouseMove);
 // Part menu state and click detection
 let clickedMesh = null;
 let menuVisible = false;
+let menuMouseFollow = { x: 0, y: 0, targetX: 0, targetY: 0 };
+let menuFollowAnimation = null; // Track ongoing animation
+const MENU_MOUSE_FOLLOW_STRENGTH = 15; // Pixels of movement per screen edge distance (subtle)
 
 // Track mouse down position to detect drag vs click
 let mouseDownPos = { x: 0, y: 0 };
@@ -2193,6 +2232,17 @@ function showPartMenu(mesh) {
     const backdrop = document.getElementById('part-menu-backdrop');
     const closeBtn = document.getElementById('part-menu-close');
     
+    // Reset menu mouse follow position
+    if (menuFollowAnimation) {
+        menuFollowAnimation.kill();
+        menuFollowAnimation = null;
+    }
+    menuMouseFollow.x = 0;
+    menuMouseFollow.y = 0;
+    menuMouseFollow.targetX = 0;
+    menuMouseFollow.targetY = 0;
+    // GSAP will handle transform via x/y properties, so don't set style directly initially
+    
     if (!overlay || !container || !title || !optionsContainer) {
         console.warn('Menu elements not found', { overlay, container, title, optionsContainer });
         return;
@@ -2249,13 +2299,41 @@ function showPartMenu(mesh) {
         
         optionEl.addEventListener('click', () => {
             opt.action();
-            hidePartMenu();
+            
+            // 3 quick hard blinks before closing
+            const gsap = window.gsap || window.GSAP;
+            if (gsap) {
+                const blinkTimeline = gsap.timeline({
+                    onComplete: () => {
+                        hidePartMenu();
+                    }
+                });
+                
+                // 3 quick hard blinks (blink on/off 3 times - faster and harder)
+                // Start with opacity 1, then blink off/on 3 times
+                for (let i = 0; i < 3; i++) {
+                    blinkTimeline
+                        .to(optionEl, { opacity: 0, duration: 0.05, ease: 'none' }) // Hard off (fast, no opacity)
+                        .to(optionEl, { opacity: 1, duration: 0.05, ease: 'none' }); // Hard on (fast)
+                }
+            } else {
+                // Fallback if GSAP not available
+                hidePartMenu();
+            }
         });
         optionsContainer.appendChild(optionEl);
     });
     
     // Close button
     closeBtn.onclick = () => hidePartMenu();
+    
+    // Close menu when clicking outside (on backdrop)
+    backdrop.onclick = (event) => {
+        // Only close if clicking directly on backdrop, not if click bubbled from container
+        if (event.target === backdrop) {
+            hidePartMenu();
+        }
+    };
     
     // Disable CSS transitions on all elements before animating to ensure same fade speed
     const partContainerEl = document.getElementById('part-container');
@@ -2296,17 +2374,20 @@ function showPartMenu(mesh) {
     // GSAP animation: fade in backdrop
     gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
     
-    // GSAP animation: scale in container (set initial state, then animate)
-    gsap.set(container, { scale: 0.8, opacity: 0, y: 20 });
+    // GSAP animation: hard mask reveal downward (like being drawn out) + subtle downward movement
+    gsap.set(container, { 
+        clipPath: 'inset(0% 0% 100% 0%)', // Start: fully masked (revealed from top, 100% hidden at bottom)
+        y: -50 // Start 50px above final position
+    });
     gsap.to(container, { 
-        scale: 1, 
-        opacity: 1, 
-        y: 0, 
-        duration: 0.4, 
-        ease: 'back.out(1.7)' 
+        clipPath: 'inset(0% 0% 0% 0%)', // End: fully revealed
+        y: 0, // Ease into final position (50px downward movement)
+        duration: 0.25, 
+        ease: 'circ.out' // Circular easing - intense at start, smooth at end
     });
     
     // GSAP animation: stagger options in with yellow blink (oldschool digital computer look)
+    // Buttons start immediately, overlapping with window reveal (0.25s)
     const optionElements = optionsContainer.querySelectorAll('.part-menu-option');
     
     // First, show yellow solid field (blink effect)
@@ -2314,7 +2395,8 @@ function showPartMenu(mesh) {
         gsap.set(el, { opacity: 0, y: 20, scale: 0.95 });
         
         // Create yellow flash/blink effect before revealing
-        const yellowBlink = gsap.timeline({ delay: index * 0.08 });
+        // Start delay: 0s + stagger offset (buttons start immediately, overlapping with window reveal)
+        const yellowBlink = gsap.timeline({ delay: 0 + (index * 0.08) });
         yellowBlink
             .set(el, { backgroundColor: '#ffd700', opacity: 1 }) // Solid yellow blink
             .to(el, { duration: 0.1, opacity: 0.3 }) // Fade yellow slightly
@@ -2332,8 +2414,9 @@ function showPartMenu(mesh) {
     optionElements.forEach((el, index) => {
         setTimeout(() => {
             // Clear GSAP's inline backgroundColor so CSS hover can work
+            // Adjusted for new delay: container reveal (0.5s) + stagger delay + animation duration
             gsap.set(el, { clearProps: 'backgroundColor' });
-        }, (index * 0.08 + 0.4) * 1000); // After animation completes
+        }, (0 + index * 0.08 + 0.4) * 1000); // After animation completes (delay + stagger + animation)
     });
 }
 
@@ -2359,17 +2442,30 @@ function hidePartMenu() {
         ease: 'power2.in'
     });
     
-    // GSAP animation: scale out container
+    // GSAP animation: hard mask hide upward (reverse of reveal)
     gsap.to(container, {
-        scale: 0.9,
-        opacity: 0,
-        y: -10,
-        duration: 0.3,
+        clipPath: 'inset(0% 0% 100% 0%)', // Hide by masking from bottom (reveal from top, 100% hidden at bottom)
+        y: 0, // Keep at final position while hiding
+        duration: 0.4,
         ease: 'power2.in',
         onComplete: () => {
             overlay.classList.remove('visible');
             menuVisible = false;
             clickedMesh = null;
+            
+            // Reset container position when menu closes
+            const container = document.getElementById('part-menu-container');
+            if (menuFollowAnimation) {
+                menuFollowAnimation.kill();
+                menuFollowAnimation = null;
+            }
+            if (container) {
+                container.style.transform = 'translate(-50%, -50%)';
+            }
+            menuMouseFollow.x = 0;
+            menuMouseFollow.y = 0;
+            menuMouseFollow.targetX = 0;
+            menuMouseFollow.targetY = 0;
         }
     });
     

@@ -484,9 +484,9 @@
             transform: translate(-50%, -50%);
             width: 90vw;
             max-width: 600px;
-            background: rgba(26, 26, 26, 0.95);
+            background: rgba(0, 0, 0, 0.75); /* Pure black at 0.75 opacity */
             border: 1px solid #ffd700; /* 1px stroke like other lines */
-            border-radius: 12px;
+            border-radius: 0; /* No rounded corners */
             padding: 32px;
             box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
         }
@@ -494,9 +494,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            margin-bottom: 32px; /* Match container padding for even spacing */
+            padding-bottom: 0; /* Remove padding since no border */
+            border-bottom: none; /* Remove fine line between headline and buttons */
         }
         #part-menu-title {
             font-family: 'Space Mono', 'Courier New', monospace;
@@ -536,7 +536,7 @@
             padding: 16px 24px;
             background: rgba(255, 215, 0, 0.05); /* Neutral state */
             border: 1px solid #ffd700; /* Solid yellow with no opacity */
-            border-radius: 8px;
+            border-radius: 0; /* No rounded corners */
             cursor: pointer;
             font-family: 'Space Mono', 'Courier New', monospace;
             font-size: 20px; /* Increased by ~25% from 16px (16 * 1.25 = 20) */
@@ -545,6 +545,29 @@
             transform: translateY(20px);
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
             position: relative;
+        }
+        /* Hover: shift headline and icon to the right */
+        .part-menu-option:hover .part-menu-option-title {
+            transform: translateX(8px); /* Subtle shift to the right */
+            transition: transform 0.2s ease;
+        }
+        .part-menu-option:hover .warning-icon-wrapper {
+            transform: translateX(8px); /* Icon shifts along with title */
+            transition: transform 0.2s ease;
+        }
+        /* Hover: shift subtitle with delay */
+        .part-menu-option:hover .part-menu-option-desc {
+            transform: translateX(8px); /* Subtle shift to the right */
+            transition: transform 0.2s ease 0.1s; /* 0.1s delay for staggered effect */
+        }
+        .part-menu-option .part-menu-option-title {
+            transition: transform 0.2s ease; /* Return to default position when not hovered */
+        }
+        .part-menu-option .warning-icon-wrapper {
+            transition: transform 0.2s ease; /* Return to default position when not hovered */
+        }
+        .part-menu-option .part-menu-option-desc {
+            transition: transform 0.2s ease; /* Return to default position when not hovered */
         }
         .part-menu-option:hover {
             background: #ffd700 !important; /* Solid yellow on hover */
@@ -592,6 +615,7 @@
             font-weight: 700;
             margin-bottom: 4px;
             font-size: 20px; /* Match container font size */
+            display: inline-block; /* Allow transform to work properly */
         }
         .part-menu-option-desc {
             font-size: 14px; /* Increased from 12px for better readability */
