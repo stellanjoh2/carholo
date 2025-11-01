@@ -2405,11 +2405,42 @@ function getPartMenuOptions(mesh) {
     return baseOptions;
 }
 
+// Store original opacity values for all meshes when popup opens
+let meshOriginalOpacities = new Map();
+
 function showPartMenu(mesh) {
     const gsap = window.gsap || window.GSAP;
     if (!gsap) {
         console.warn('GSAP not loaded');
         return;
+    }
+    
+    // Fade out all other parts (50% opacity) while keeping clicked part at full opacity
+    if (porscheModel && mesh) {
+        meshOriginalOpacities.clear();
+        
+        porscheModel.traverse((child) => {
+            // Only fade car parts (meshes), exclude helper objects and the clicked mesh
+            if (child.isMesh && child !== mesh && !child.userData.isHelper) {
+                // Store original opacity
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        // Store for each material in array
+                        child.material.forEach((mat, idx) => {
+                            const originalOpacity = mat.opacity !== undefined ? mat.opacity : 1.0;
+                            meshOriginalOpacities.set(`${child.uuid}_${idx}`, originalOpacity);
+                            mat.opacity = 0.5;
+                            mat.transparent = true;
+                        });
+                    } else {
+                        const originalOpacity = child.material.opacity !== undefined ? child.material.opacity : 1.0;
+                        meshOriginalOpacities.set(child.uuid, originalOpacity);
+                        child.material.opacity = 0.5;
+                        child.material.transparent = true;
+                    }
+                }
+            }
+        });
     }
     
     // Pause car rotation when menu opens
@@ -2798,6 +2829,41 @@ function showPartMenu(mesh) {
 function hidePartMenu() {
     const gsap = window.gsap || window.GSAP;
     if (!gsap) return;
+    
+    // Restore all parts to full opacity when menu closes
+    if (porscheModel) {
+        porscheModel.traverse((child) => {
+            if (child.isMesh) {
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        // Restore each material in array
+                        child.material.forEach((mat, idx) => {
+                            const key = `${child.uuid}_${idx}`;
+                            if (meshOriginalOpacities.has(key)) {
+                                mat.opacity = meshOriginalOpacities.get(key);
+                                // Only set transparent to false if opacity was 1.0
+                                if (mat.opacity === 1.0) {
+                                    mat.transparent = false;
+                                }
+                            }
+                        });
+                    } else {
+                        // Restore single material
+                        if (meshOriginalOpacities.has(child.uuid)) {
+                            child.material.opacity = meshOriginalOpacities.get(child.uuid);
+                            // Only set transparent to false if opacity was 1.0
+                            if (child.material.opacity === 1.0) {
+                                child.material.transparent = false;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Clear stored opacities
+        meshOriginalOpacities.clear();
+    }
     
     const overlay = document.getElementById('part-menu-overlay');
     const container = document.getElementById('part-menu-container');
