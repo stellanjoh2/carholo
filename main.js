@@ -2434,22 +2434,30 @@ function showPartMenu(mesh) {
         // Ensure we have a valid size
         const safeSize = maxSize > 0.001 ? maxSize : 1.0;
         
-        // Calculate direction from part center to current camera position
-        const currentToPart = camera.position.clone().sub(partCenter);
-        let cameraDirection = currentToPart.clone().normalize();
+        // Calculate current distance from camera to part center
+        const currentDistance = camera.position.distanceTo(partCenter);
         
-        // If direction is invalid or too small, use a default viewing angle
-        if (!cameraDirection.length() || !Number.isFinite(cameraDirection.x) || 
-            Math.abs(cameraDirection.length()) < 0.1) {
-            cameraDirection.set(0.3, 0.5, 1).normalize();
+        // Calculate direction FROM camera TO part center (direction to zoom in)
+        const cameraToPart = partCenter.clone().sub(camera.position);
+        let directionToPart = cameraToPart.clone().normalize();
+        
+        // If direction is invalid or too small, use a default viewing direction
+        if (!directionToPart.length() || !Number.isFinite(directionToPart.x) || 
+            Math.abs(directionToPart.length()) < 0.1) {
+            directionToPart.set(0.3, 0.5, 1).normalize();
         }
         
-        // Calculate distance: zoom in closer (about 2-3x the part size)
-        const zoomDistance = safeSize * 2.5;
+        // Calculate target distance: Always zoom IN (closer to part)
+        // Use 60% of current distance OR 2.5x part size, whichever is closer (ensures we always zoom in)
+        const minZoomDistance = safeSize * 2.5;
+        const targetDistance = Math.min(currentDistance * 0.6, Math.max(minZoomDistance, currentDistance * 0.6));
         
-        // Calculate new camera position: part center + direction * distance
-        const newCameraPos = partCenter.clone().add(
-            cameraDirection.multiplyScalar(zoomDistance)
+        // Ensure we're always closer than current distance
+        const finalDistance = Math.min(targetDistance, currentDistance * 0.9);
+        
+        // Calculate new camera position: part center - direction * distance (move camera closer)
+        const newCameraPos = partCenter.clone().sub(
+            directionToPart.multiplyScalar(finalDistance)
         );
         
         // Kill any ongoing camera animation
