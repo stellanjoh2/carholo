@@ -2426,6 +2426,9 @@ function showPartMenu(mesh) {
     
     menuVisible = true;
     
+    // Force hide OS cursor when menu opens
+    document.body.classList.add('menu-open');
+    
     // Hide tooltip when menu opens
     const tooltip = document.getElementById('tooltip');
     if (tooltip) {
