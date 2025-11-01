@@ -2156,6 +2156,7 @@ let menuMouseFollow = { x: 0, y: 0, targetX: 0, targetY: 0 };
 let menuFollowAnimation = null; // Track ongoing animation
 const MENU_MOUSE_FOLLOW_STRENGTH = 15; // Pixels of movement per screen edge distance (subtle)
 let autoRotateStateBeforeMenu = true; // Store auto-rotate state before menu opens
+let clickedMeshOriginalMaterial = null; // Store original material of clicked mesh
 
 // Track mouse down position to detect drag vs click
 let mouseDownPos = { x: 0, y: 0 };
@@ -2360,6 +2361,42 @@ function showPartMenu(mesh) {
     // Pause car rotation when menu opens
     autoRotateStateBeforeMenu = autoRotateEnabled;
     autoRotateEnabled = false;
+    
+    // Keep clicked mesh emissive while menu is open
+    if (mesh && mesh.isMesh && mesh.material) {
+        // Store original material if not already stored
+        if (!clickedMeshOriginalMaterial && mesh.userData.originalMaterial) {
+            clickedMeshOriginalMaterial = mesh.userData.originalMaterial.clone();
+        } else if (!clickedMeshOriginalMaterial) {
+            clickedMeshOriginalMaterial = mesh.material.clone();
+        }
+        
+        // Determine status color based on mesh UUID (same logic as hover)
+        const partId = mesh.uuid;
+        const hash = partId.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0);
+        const statusCategory = Math.abs(hash) % 3;
+        
+        let statusColor = 0xffd700; // Default yellow
+        if (statusCategory === 1) {
+            statusColor = 0xff4444; // Red for warnings
+        } else if (statusCategory === 0) {
+            statusColor = 0x44ff44; // Green for good status
+        }
+        
+        // Ensure mesh has emissive material while menu is open
+        if (!mesh.material.emissive || !mesh.material.emissiveIntensity || 
+            mesh.material.emissive.getHex() !== statusColor) {
+            // Clone current material and apply emissive
+            const emissiveMat = mesh.material.clone();
+            emissiveMat.emissive = new THREE.Color(statusColor);
+            emissiveMat.emissiveIntensity = 7.5;
+            if (emissiveMat.dispose) emissiveMat.dispose();
+            mesh.material = emissiveMat;
+        }
+    }
     
     menuVisible = true;
     const overlay = document.getElementById('part-menu-overlay');
@@ -2584,6 +2621,19 @@ function hidePartMenu() {
         onComplete: () => {
             overlay.classList.remove('visible');
             menuVisible = false;
+            
+            // Restore clicked mesh material when menu closes
+            if (clickedMesh && clickedMeshOriginalMaterial) {
+                // Only restore if mesh is not currently hovered
+                if (clickedMesh !== hoveredMesh) {
+                    if (clickedMesh.material && clickedMesh.material.dispose) {
+                        clickedMesh.material.dispose();
+                    }
+                    clickedMesh.material = clickedMeshOriginalMaterial.clone();
+                }
+                clickedMeshOriginalMaterial = null;
+            }
+            
             clickedMesh = null;
             
             // Resume car rotation to previous state when menu closes
