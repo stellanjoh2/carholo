@@ -1248,13 +1248,8 @@ function initializeUIHoverBlink() {
             el.classList.add('ui-hover-blink');
             if (!uiHoverBlinkTargets.includes(el)) uiHoverBlinkTargets.push(el);
             
-            // Play hover sound (throttled - using part hover sound)
-            const now = performance.now();
-            if (now - uiHoverSoundLastPlayed > UI_HOVER_SOUND_THROTTLE) {
-                hoverSound.currentTime = 0;
-                hoverSound.play().catch(e => console.log('UI hover sound playback failed:', e));
-                uiHoverSoundLastPlayed = now;
-            }
+            // Play popup UI hover sound (same as popup window buttons)
+            createUISound('hover');
         });
         el.addEventListener('mouseleave', () => {
             el.classList.remove('ui-hover-blink');
