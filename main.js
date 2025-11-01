@@ -2879,13 +2879,6 @@ function hidePartMenu() {
     const gsap = window.gsap || window.GSAP;
     if (!gsap) return;
     
-    // Play part selection sound in reverse when closing - non-blocking
-    try {
-        playPartSelectSound(true);
-    } catch (error) {
-        console.warn('Failed to play part selection sound (reverse):', error);
-    }
-    
     const overlay = document.getElementById('part-menu-overlay');
     const container = document.getElementById('part-menu-container');
     const backdrop = document.getElementById('part-menu-backdrop');
