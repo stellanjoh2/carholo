@@ -968,7 +968,7 @@ let tooltipTypewriterSpeed = 1.5; // characters per frame (slower)
 
 // Sound effects - preload audio
 const hoverSound = new Audio('261590__kwahmah_02__little-glitch.flac');
-hoverSound.volume = 0.3;
+hoverSound.volume = 0.36; // Increased by 20% (0.3 * 1.2 = 0.36)
 
 // Web Audio API sound generator for retro/digital UI sounds
 let audioContext = null;
