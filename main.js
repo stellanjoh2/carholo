@@ -2949,6 +2949,25 @@ function hidePartMenu() {
                     gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out' });
                 }
             }
+            
+            // Reset container position when menu closes
+            const resetContainer = document.getElementById('part-menu-container');
+            if (menuFollowAnimation) {
+                menuFollowAnimation.kill();
+                menuFollowAnimation = null;
+            }
+            if (resetContainer) {
+                resetContainer.style.transform = 'translate(-50%, -50%)';
+            }
+            menuMouseFollow.x = 0;
+            menuMouseFollow.y = 0;
+            menuMouseFollow.targetX = 0;
+            menuMouseFollow.targetY = 0;
+        }
+    });
+    
+    // Fade out backdrop
+    gsap.to(backdrop, { opacity: 0, duration: 0.3 });
 }
 
 // Load Porsche model
