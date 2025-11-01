@@ -1090,8 +1090,8 @@ function initializeMusicPlayer() {
         return;
     }
     
-    // Set initial play icon (yellow)
-    musicIcon.innerHTML = '<i data-feather="play"></i>';
+    // Set initial music note icon (yellow) - neutral state
+    musicIcon.innerHTML = '<i data-feather="music"></i>';
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
@@ -1104,8 +1104,8 @@ function initializeMusicPlayer() {
             isMusicPlaying = false;
             musicPlayer.classList.remove('playing');
             
-            // Change to play icon (yellow)
-            musicIcon.innerHTML = '<i data-feather="play"></i>';
+            // Change to music note icon (yellow) - neutral state
+            musicIcon.innerHTML = '<i data-feather="music"></i>';
             if (typeof feather !== 'undefined') {
                 feather.replace();
             }
