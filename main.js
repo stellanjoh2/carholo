@@ -2390,11 +2390,15 @@ function showPartMenu(mesh) {
         if (!mesh.material.emissive || !mesh.material.emissiveIntensity || 
             mesh.material.emissive.getHex() !== statusColor) {
             // Clone current material and apply emissive
-            const emissiveMat = mesh.material.clone();
-            emissiveMat.emissive = new THREE.Color(statusColor);
-            emissiveMat.emissiveIntensity = 7.5;
-            if (emissiveMat.dispose) emissiveMat.dispose();
-            mesh.material = emissiveMat;
+            if (mesh.material.dispose) {
+                const oldMat = mesh.material;
+                mesh.material = oldMat.clone();
+                oldMat.dispose();
+            } else {
+                mesh.material = mesh.material.clone();
+            }
+            mesh.material.emissive = new THREE.Color(statusColor);
+            mesh.material.emissiveIntensity = 7.5;
         }
     }
     
