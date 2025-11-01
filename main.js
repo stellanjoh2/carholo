@@ -1267,8 +1267,8 @@ function initializeRotateToggle() {
     const btn = document.getElementById('rotate-button');
     const icon = document.getElementById('rotate-icon');
     if (!btn || !icon) return;
-    // Feather rotate icon replacement
-    icon.innerHTML = '<i data-feather="rotate-cw"></i>';
+    // Feather repeat icon (two arrows in loop pattern)
+    icon.innerHTML = '<i data-feather="repeat"></i>';
     if (typeof feather !== 'undefined') { try { feather.replace(); } catch(_){} }
     const sync = () => {
         if (autoRotateEnabled) btn.classList.remove('paused');
