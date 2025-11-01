@@ -43,7 +43,7 @@ const CONFIG = {
         AMOUNT: 0.075
     },
     FOG: {
-        COLOR: 0xff6600,
+        COLOR: 0xff8c00, // 25% more yellow (from 0xff6600)
         DENSITY: 0.06
     },
     CLICK: {
@@ -209,6 +209,21 @@ function kelvinToRgb(kelvin) {
     return new THREE.Color(r / 255, g / 255, b / 255);
 }
 
+/**
+ * Interpolates a color 25% towards yellow
+ * @param {THREE.Color} color - Source color
+ * @returns {THREE.Color} Color pushed 25% towards yellow
+ */
+function pushColorTowardsYellow(color) {
+    const yellow = new THREE.Color(0xffff00); // Pure yellow
+    const result = color.clone();
+    // Interpolate 25% towards yellow
+    result.r += (yellow.r - color.r) * 0.25;
+    result.g += (yellow.g - color.g) * 0.25;
+    result.b += (yellow.b - color.b) * 0.25;
+    return result;
+}
+
 // ============================================================================
 // LIGHTING SETUP
 // ============================================================================
@@ -227,7 +242,9 @@ keyLight.shadow.camera.top = 10;
 keyLight.shadow.camera.bottom = -10;
 scene.add(keyLight);
 
-const fillLight = new THREE.DirectionalLight(kelvinToRgb(3200), 2.5);
+// Fill light - 3200K pushed 25% towards yellow
+const fillLightColor = pushColorTowardsYellow(kelvinToRgb(3200));
+const fillLight = new THREE.DirectionalLight(fillLightColor, 2.5);
 fillLight.position.set(-8, 6, 5);
 scene.add(fillLight);
 
@@ -3567,7 +3584,7 @@ loader.load(
                             clearcoatRoughness: 0.0,
                             sheen: 2.0,
                             sheenRoughness: 0.3,
-                            sheenColor: new THREE.Color(0xff6600),
+                            sheenColor: new THREE.Color(0xff8c00), // Match updated Fresnel color
                             iridescence: 1.0,
                             iridescenceIOR: 1.3,
                             iridescenceThicknessRange: [100, 500],
