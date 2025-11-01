@@ -611,8 +611,9 @@
             transform: translateX(8px); /* Subtle shift to the right */
             transition: transform 0.2s ease;
         }
+        /* Warning icon moves with title (inside title element) - no separate transform */
         .part-menu-option:hover .warning-icon-wrapper {
-            transform: translateX(8px); /* Icon shifts along with title */
+            transform: translateX(0); /* Icon is inside title, so it moves with title */
             transition: transform 0.2s ease;
         }
         /* Hover: shift subtitle with delay */
