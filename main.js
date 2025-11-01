@@ -27,9 +27,9 @@ const CONFIG = {
         FAR: 5000
     },
     BLOOM: {
-        STRENGTH: 1.2,
-        RADIUS: 0.8,
-        THRESHOLD: 0.85
+        STRENGTH: 0.2,
+        RADIUS: 0.7,
+        THRESHOLD: 0.9
     },
     FISHEYE: {
         FOV: 60,
@@ -584,8 +584,14 @@ if (ENABLE_PANEL_BLUR) {
     composer.addPass(panelBlurPass);
 }
 
-// Mouse position and raycaster are declared in INTERACTION STATE section above
+// ============================================================================
+// INTERACTION STATE
+// ============================================================================
+
+const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+let mouseX = 0;
+let mouseY = 0;
 let hoveredMesh = null;
 let hoverFadeProgress = 0;
 let boundingBoxHelper = null;
@@ -4033,7 +4039,7 @@ function animate() {
     
     // Update panel blur rect from DOM position
     const infoEl = document.getElementById('part-info');
-    if (enablePanelBlur && panelBlurPass && infoEl) {
+    if (ENABLE_PANEL_BLUR && panelBlurPass && infoEl) {
         const rect = infoEl.getBoundingClientRect();
         const x0 = rect.left / window.innerWidth;
         const y0 = 1.0 - (rect.bottom / window.innerHeight); // flip to GL UV
@@ -4328,7 +4334,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
 
-    if (enablePanelBlur && panelBlurPass) {
+    if (ENABLE_PANEL_BLUR && panelBlurPass) {
         panelBlurPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
     }
 });
