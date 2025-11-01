@@ -740,44 +740,22 @@
     <div id="canvas-container"></div>
     <script type="module" src="main.js"></script>
     <script>
-        // Mobile detection - ONLY for actual mobile devices (phones/tablets), NEVER for laptops/desktops
+        // Mobile detection - DISABLED (mobile message turned off completely)
         function isMobileDevice() {
-            const ua = navigator.userAgent;
-            
-            // EXPLICITLY exclude all desktop/laptop OS patterns first
-            // MacBooks: Contains "Macintosh" or "Mac OS" but NOT iPhone/iPad/iPod
-            if (/Macintosh|Mac OS|MacIntel/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
-                return false; // MacBook/laptop
-            }
-            
-            // Windows laptops/desktops
-            if (/Windows/i.test(ua) && !/Windows Phone|IEMobile/i.test(ua)) {
-                return false; // Windows laptop/desktop
-            }
-            
-            // Linux desktops (but allow Android which is Linux-based)
-            if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
-                return false; // Linux desktop
-            }
-            
-            // ONLY return true for explicit mobile device user agents
-            const mobilePatterns = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|webOS/i;
-            const isMobile = mobilePatterns.test(ua);
-            
-            // If not explicitly mobile, it's a desktop/laptop - return false
-            return isMobile;
+            // Always return false - mobile message is disabled
+            return false;
         }
         
-        // Apply mobile detection on page load
-        if (isMobileDevice()) {
-            document.body.classList.add('mobile');
-            document.getElementById('mobile-message').classList.add('active');
-            // Disable pointer events on canvas to prevent interaction
-            const canvas = document.querySelector('canvas');
-            if (canvas) {
-                canvas.style.pointerEvents = 'none';
-            }
-        }
+        // Mobile detection is disabled - no mobile message will appear
+        // if (isMobileDevice()) {
+        //     document.body.classList.add('mobile');
+        //     document.getElementById('mobile-message').classList.add('active');
+        //     // Disable pointer events on canvas to prevent interaction
+        //     const canvas = document.querySelector('canvas');
+        //     if (canvas) {
+        //         canvas.style.pointerEvents = 'none';
+        //     }
+        // }
         
         // Follow mouse with cross (only on non-mobile)
         if (!isMobileDevice()) {
