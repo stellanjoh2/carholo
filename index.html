@@ -79,7 +79,7 @@
             z-index: 0;
         }
 
-        /* Yellow cross cursor - original CSS pseudo-elements with colors and simple drop-shadow */
+        /* Cursor using Feather Icons plus icon - single unified shape with better drop-shadow control */
         #cursor-cross {
             position: fixed;
             left: 0;
@@ -89,48 +89,26 @@
             pointer-events: none;
             z-index: 10000; /* Higher than menu overlay (9999) to be visible on top */
             transform: translate(-50%, -50%);
-        }
-        #cursor-cross::before,
-        #cursor-cross::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            background: #ffd700; /* neon yellow default */
-            transform: translate(-50%, -50%);
-            /* Simple drop-shadow for visibility */
+            /* Use Feather Icons plus icon as inline SVG */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ffd700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+            background-size: 50px 50px;
+            background-repeat: no-repeat;
+            background-position: center;
+            /* Simple drop-shadow for visibility - better control with single shape */
             filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
         }
-        /* vertical bar */
-        #cursor-cross::before {
-            width: 2px;
-            height: 50px;
-        }
-        /* horizontal bar */
-        #cursor-cross::after {
-            width: 50px;
-            height: 2px;
-        }
-        /* Hovering state turns cross red */
-        #cursor-cross.hovering::before,
-        #cursor-cross.hovering::after {
-            background: #ff0000;
+        
+        /* Cursor color states - change stroke color in SVG */
+        #cursor-cross.warning {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ff4444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
         }
         
-        /* Cursor color states */
-        #cursor-cross.warning::before,
-        #cursor-cross.warning::after {
-            background: #ff4444; /* Red for warnings */
+        #cursor-cross.good {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2344ff44' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
         }
         
-        #cursor-cross.good::before,
-        #cursor-cross.good::after {
-            background: #44ff44; /* Green for good status */
-        }
-        
-        #cursor-cross.neutral::before,
-        #cursor-cross.neutral::after {
-            background: #ffd700; /* Yellow for neutral status */
+        #cursor-cross.neutral {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ffd700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
         }
         
         /* Tooltip styling */
