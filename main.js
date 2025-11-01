@@ -3657,7 +3657,7 @@ loader.load(
                         clearcoatRoughness: 0.0, // Perfectly smooth clearcoat
                         sheen: 2.0, // Moderate hologram-like Fresnel
                         sheenRoughness: 0.3, // Balanced Fresnel effect
-                        sheenColor: new THREE.Color(0xff6600), // Orange Fresnel edge
+                        sheenColor: new THREE.Color(0xff8c00), // Orange Fresnel edge (25% more yellow)
                         iridescence: 1.0, // Moderate iridescence intensity
                         iridescenceIOR: 1.3, // Standard refraction
                         iridescenceThicknessRange: [100, 500] // Balanced range for rainbow effects
