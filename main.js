@@ -2843,9 +2843,6 @@ function hidePartMenu() {
             
             clickedMesh = null;
             
-            // Resume car rotation to previous state when menu closes
-            autoRotateEnabled = autoRotateStateBeforeMenu;
-            
             // Restore camera to original position when menu closes
             if (cameraOriginalState.saved) {
                 // Create animation objects for GSAP to tween
@@ -2885,6 +2882,9 @@ function hidePartMenu() {
                         // Reset saved flag so we can save new position if another part is clicked
                         cameraOriginalState.saved = false;
                         
+                        // Resume car rotation to previous state after camera animation completes
+                        autoRotateEnabled = autoRotateStateBeforeMenu;
+                        
                         // Fade in UI elements after camera has eased back to final position
                         const partContainerEl = document.getElementById('part-container');
                         const uiButtons = [
@@ -2918,7 +2918,9 @@ function hidePartMenu() {
                     }
                 });
             } else {
-                // No camera animation - fade in UI elements immediately
+                // No camera animation - resume car rotation and fade in UI elements immediately
+                autoRotateEnabled = autoRotateStateBeforeMenu;
+                
                 const partContainerEl = document.getElementById('part-container');
                 const uiButtons = [
                     document.getElementById('music-player'),
