@@ -1077,6 +1077,67 @@ ambientMusic.loop = true;
 ambientMusic.preload = 'auto';
 ambientMusic.crossOrigin = 'anonymous';
 
+// Part selection sound (with reverse playback for closing)
+let partSelectSoundBuffer = null;
+let partSelectSoundReversedBuffer = null;
+
+// Load part selection sound with Web Audio API for reverse playback
+async function loadPartSelectSound() {
+    if (partSelectSoundBuffer) return; // Already loaded
+    
+    try {
+        initAudioContext();
+        if (!audioContext) return;
+        
+        const response = await fetch('63138__uzerx__sub-a-2-secs.wav');
+        const arrayBuffer = await response.arrayBuffer();
+        partSelectSoundBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        // Create reversed buffer
+        const length = partSelectSoundBuffer.length;
+        const reversed = audioContext.createBuffer(
+            partSelectSoundBuffer.numberOfChannels,
+            length,
+            partSelectSoundBuffer.sampleRate
+        );
+        
+        for (let channel = 0; channel < partSelectSoundBuffer.numberOfChannels; channel++) {
+            const channelData = partSelectSoundBuffer.getChannelData(channel);
+            const reversedData = reversed.getChannelData(channel);
+            for (let i = 0; i < length; i++) {
+                reversedData[i] = channelData[length - 1 - i];
+            }
+        }
+        partSelectSoundReversedBuffer = reversed;
+    } catch (error) {
+        console.error('Failed to load part selection sound:', error);
+    }
+}
+
+// Play part selection sound (forward or reverse)
+function playPartSelectSound(reverse = false) {
+    if (!audioContext || audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    
+    if (!partSelectSoundBuffer && !partSelectSoundReversedBuffer) {
+        loadPartSelectSound().then(() => playPartSelectSound(reverse));
+        return;
+    }
+    
+    const buffer = reverse ? partSelectSoundReversedBuffer : partSelectSoundBuffer;
+    if (!buffer) return;
+    
+    const source = audioContext.createBufferSource();
+    const gainNode = audioContext.createGain();
+    
+    source.buffer = buffer;
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    gainNode.gain.value = 0.6; // Volume control
+    source.start(0);
+}
+
 // Music player state
 let isMusicPlaying = false;
 
@@ -2407,6 +2468,9 @@ function showPartMenu(mesh) {
         return;
     }
     
+    // Play part selection sound (forward)
+    playPartSelectSound(false);
+    
     // Pause car rotation when menu opens
     autoRotateStateBeforeMenu = autoRotateEnabled;
     autoRotateEnabled = false;
@@ -2793,6 +2857,9 @@ function showPartMenu(mesh) {
 function hidePartMenu() {
     const gsap = window.gsap || window.GSAP;
     if (!gsap) return;
+    
+    // Play part selection sound in reverse when closing
+    playPartSelectSound(true);
     
     const overlay = document.getElementById('part-menu-overlay');
     const container = document.getElementById('part-menu-container');
