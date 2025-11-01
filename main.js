@@ -2195,13 +2195,6 @@ const MENU_MOUSE_FOLLOW_STRENGTH = 15; // Pixels of movement per screen edge dis
 let autoRotateStateBeforeMenu = true; // Store auto-rotate state before menu opens
 let clickedMeshOriginalMaterial = null; // Store original material of clicked mesh
 
-// Camera focus system - store original camera state before focusing on part
-let cameraOriginalState = {
-    position: new THREE.Vector3(),
-    target: new THREE.Vector3(),
-    saved: false
-};
-let cameraFocusAnimation = null; // Track ongoing camera animation
 
 // Track mouse down position to detect drag vs click
 let mouseDownPos = { x: 0, y: 0 };
@@ -2410,105 +2403,6 @@ function showPartMenu(mesh) {
     if (!gsap) {
         console.warn('GSAP not loaded');
         return;
-    }
-    
-    // IMMEDIATE: Start camera focus animation right on click (before anything else)
-    if (mesh && mesh.isMesh) {
-        // Save original camera state before focusing (only first time)
-        if (!cameraOriginalState.saved) {
-            cameraOriginalState.position.copy(camera.position);
-            cameraOriginalState.target.copy(controls.target);
-            cameraOriginalState.saved = true;
-        }
-        
-        // Get mesh bounding box to find center and size
-        const bbox = new THREE.Box3().setFromObject(mesh);
-        const partCenter = bbox.getCenter(new THREE.Vector3());
-        const partSize = bbox.getSize(new THREE.Vector3());
-        const maxSize = Math.max(partSize.x, partSize.y, partSize.z);
-        
-        // Ensure we have a valid size
-        const safeSize = maxSize > 0.001 ? maxSize : 1.0;
-        
-        // Calculate direction from part center to current camera position
-        const currentToPart = camera.position.clone().sub(partCenter);
-        let cameraDirection = currentToPart.clone().normalize();
-        
-        // If direction is invalid or too small, use a default viewing angle
-        if (!cameraDirection.length() || !Number.isFinite(cameraDirection.x) || 
-            Math.abs(cameraDirection.length()) < 0.1) {
-            cameraDirection.set(0.3, 0.5, 1).normalize();
-        }
-        
-        // Calculate distance: zoom in closer (about 2-3x the part size)
-        const zoomDistance = safeSize * 2.5;
-        
-        // Calculate new camera position: part center + direction * distance
-        const newCameraPos = partCenter.clone().add(
-            cameraDirection.multiplyScalar(zoomDistance)
-        );
-        
-        // Kill any ongoing camera animation
-        if (cameraFocusAnimation) {
-            cameraFocusAnimation.kill();
-        }
-        
-        // Create animation objects for GSAP to tween
-        const camPos = { 
-            x: camera.position.x, 
-            y: camera.position.y, 
-            z: camera.position.z 
-        };
-        const camTarget = { 
-            x: controls.target.x, 
-            y: controls.target.y, 
-            z: controls.target.z 
-        };
-        const targetPos = { 
-            x: newCameraPos.x, 
-            y: newCameraPos.y, 
-            z: newCameraPos.z 
-        };
-        const targetTarget = { 
-            x: partCenter.x, 
-            y: partCenter.y, 
-            z: partCenter.z 
-        };
-        
-        // Create timeline for synchronized animation - START IMMEDIATELY
-        const cameraTimeline = gsap.timeline();
-        
-        // Animate camera position and target together
-        cameraTimeline
-            .to(camPos, {
-                x: targetPos.x,
-                y: targetPos.y,
-                z: targetPos.z,
-                duration: 1.0,
-                ease: 'power2.inOut',
-                onUpdate: () => {
-                    if (Number.isFinite(camPos.x) && Number.isFinite(camPos.y) && Number.isFinite(camPos.z)) {
-                        camera.position.set(camPos.x, camPos.y, camPos.z);
-                        camera.updateProjectionMatrix();
-                    }
-                }
-            }, 0) // Start at time 0
-            .to(camTarget, {
-                x: targetTarget.x,
-                y: targetTarget.y,
-                z: targetTarget.z,
-                duration: 1.0,
-                ease: 'power2.inOut',
-                onUpdate: () => {
-                    if (Number.isFinite(camTarget.x) && Number.isFinite(camTarget.y) && Number.isFinite(camTarget.z)) {
-                        controls.target.set(camTarget.x, camTarget.y, camTarget.z);
-                        controls.update();
-                    }
-                }
-            }, 0); // Start at time 0 (same time as position)
-        
-        // Store timeline reference
-        cameraFocusAnimation = cameraTimeline;
     }
     
     // Pause car rotation when menu opens
@@ -2837,48 +2731,6 @@ function hidePartMenu() {
             
             // Resume car rotation to previous state when menu closes
             autoRotateEnabled = autoRotateStateBeforeMenu;
-            
-            // Restore camera to original position when menu closes
-            if (cameraOriginalState.saved) {
-                // Create animation objects for GSAP to tween
-                const camPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
-                const camTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
-                
-                // Kill any ongoing camera animation
-                if (cameraFocusAnimation) {
-                    cameraFocusAnimation.kill();
-                }
-                
-                // Animate camera back to original position
-                gsap.to(camPos, {
-                    x: cameraOriginalState.position.x,
-                    y: cameraOriginalState.position.y,
-                    z: cameraOriginalState.position.z,
-                    duration: 1.0,
-                    ease: 'power2.inOut',
-                    onUpdate: () => {
-                        camera.position.set(camPos.x, camPos.y, camPos.z);
-                        camera.updateProjectionMatrix();
-                    }
-                });
-                
-                // Animate camera target back to original
-                gsap.to(camTarget, {
-                    x: cameraOriginalState.target.x,
-                    y: cameraOriginalState.target.y,
-                    z: cameraOriginalState.target.z,
-                    duration: 1.0,
-                    ease: 'power2.inOut',
-                    onUpdate: () => {
-                        controls.target.set(camTarget.x, camTarget.y, camTarget.z);
-                        controls.update();
-                    },
-                    onComplete: () => {
-                        // Reset saved flag so we can save new position if another part is clicked
-                        cameraOriginalState.saved = false;
-                    }
-                });
-            }
             
             // Reset container position when menu closes
             const container = document.getElementById('part-menu-container');
