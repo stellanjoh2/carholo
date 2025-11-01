@@ -742,29 +742,33 @@
     <script>
         // Mobile detection - only for actual mobile devices (phones/tablets), not laptops
         function isMobileDevice() {
-            // Primary check: user agent for mobile devices (most reliable)
-            const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const userAgent = navigator.userAgent.toLowerCase();
             
-            // If it's already identified as mobile by user agent, return true
-            if (isMobileUserAgent) {
-                return true;
+            // First, explicitly exclude desktop/laptop OS patterns
+            const isDesktopOS = /macintosh|windows|linux/i.test(navigator.userAgent) && 
+                                !/iphone|ipad|ipod|android/i.test(navigator.userAgent);
+            
+            // If it's a desktop OS (Mac, Windows, Linux that isn't mobile), never show mobile message
+            if (isDesktopOS) {
+                return false;
             }
             
-            // Secondary check: very strict screen size check (phones/tablets only)
-            // Tablets are typically max 1024px wide, phones are typically max 480px
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            const isSmallScreen = screenWidth <= 1024 || screenHeight <= 768;
+            // Check user agent for mobile devices (most reliable)
+            const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
             
-            // Additional check: exclude desktop browsers even if they have touch
-            // Desktop browsers usually have larger viewports
-            const isDesktopLike = screenWidth > 1200 || screenHeight > 800;
+            // Only show message if explicitly mobile user agent
+            // Additional safety check: screen size must be small (mobile-like)
+            if (isMobileUserAgent) {
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                // Even if mobile user agent, only show if screen is actually mobile-sized
+                // This prevents iPads in desktop mode or resized browser windows from triggering
+                const isActuallySmallScreen = screenWidth <= 1024 && screenHeight <= 800;
+                return isActuallySmallScreen;
+            }
             
-            // Check for touch, but only if screen is small AND not desktop-like
-            const hasTouch = 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
-            
-            // Only return true if: touch capable, small screen, and NOT desktop-like
-            return hasTouch && isSmallScreen && !isDesktopLike;
+            // Default: not mobile
+            return false;
         }
         
         // Apply mobile detection on page load
