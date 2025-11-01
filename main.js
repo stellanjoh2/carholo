@@ -2884,59 +2884,71 @@ function hidePartMenu() {
                     onComplete: () => {
                         // Reset saved flag so we can save new position if another part is clicked
                         cameraOriginalState.saved = false;
+                        
+                        // Fade in UI elements after camera has eased back to final position
+                        const partContainerEl = document.getElementById('part-container');
+                        const uiButtons = [
+                            document.getElementById('music-player'),
+                            document.getElementById('fullscreen-button'),
+                            document.getElementById('rotate-button'),
+                            document.getElementById('info-button')
+                        ];
+                        
+                        // Disable CSS transitions temporarily for synchronized GSAP animations
+                        const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+                        allElements.forEach(el => {
+                            el.style.transition = 'none'; // Disable CSS transitions
+                        });
+                        
+                        if (partContainerEl && infoPanelEnabled) {
+                            gsap.to(partContainerEl, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+                        }
+                        
+                        // Show UI buttons with same timing as info field
+                        uiButtons.forEach(btn => {
+                            if (btn) {
+                                gsap.to(btn, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+                            }
+                        });
+                        
+                        // Show Porsche logo (3D mesh) again with same timing
+                        if (uiCogMesh && uiCogMesh.material) {
+                            gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+                        }
                     }
                 });
+            } else {
+                // No camera animation - fade in UI elements immediately
+                const partContainerEl = document.getElementById('part-container');
+                const uiButtons = [
+                    document.getElementById('music-player'),
+                    document.getElementById('fullscreen-button'),
+                    document.getElementById('rotate-button'),
+                    document.getElementById('info-button')
+                ];
+                
+                // Disable CSS transitions temporarily for synchronized GSAP animations
+                const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+                allElements.forEach(el => {
+                    el.style.transition = 'none'; // Disable CSS transitions
+                });
+                
+                if (partContainerEl && infoPanelEnabled) {
+                    gsap.to(partContainerEl, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+                }
+                
+                // Show UI buttons with same timing as info field
+                uiButtons.forEach(btn => {
+                    if (btn) {
+                        gsap.to(btn, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+                    }
+                });
+                
+                // Show Porsche logo (3D mesh) again with same timing
+                if (uiCogMesh && uiCogMesh.material) {
+                    gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+                }
             }
-            
-            // Reset container position when menu closes
-            const container = document.getElementById('part-menu-container');
-            if (menuFollowAnimation) {
-                menuFollowAnimation.kill();
-                menuFollowAnimation = null;
-            }
-            if (container) {
-                container.style.transform = 'translate(-50%, -50%)';
-            }
-            menuMouseFollow.x = 0;
-            menuMouseFollow.y = 0;
-            menuMouseFollow.targetX = 0;
-            menuMouseFollow.targetY = 0;
-        }
-    });
-    
-    // Fade out backdrop
-    gsap.to(backdrop, { opacity: 0, duration: 0.3 });
-    
-    // Show left side info window and title again when menu closes
-    const partContainerEl = document.getElementById('part-container');
-    const uiButtons = [
-        document.getElementById('music-player'),
-        document.getElementById('fullscreen-button'),
-        document.getElementById('rotate-button'),
-        document.getElementById('info-button')
-    ];
-    
-    // Disable CSS transitions temporarily for synchronized GSAP animations
-    const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
-    allElements.forEach(el => {
-        el.style.transition = 'none'; // Disable CSS transitions
-    });
-    
-    if (partContainerEl && infoPanelEnabled) {
-        gsap.to(partContainerEl, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.2, overwrite: true });
-    }
-    
-    // Show UI buttons with exact same timing as info field
-    uiButtons.forEach(btn => {
-        if (btn) {
-            gsap.to(btn, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.2, overwrite: true });
-        }
-    });
-    
-    // Show Porsche logo (3D mesh) again with same timing
-    if (uiCogMesh && uiCogMesh.material) {
-        gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.2 });
-    }
 }
 
 // Load Porsche model
