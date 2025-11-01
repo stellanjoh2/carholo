@@ -2415,7 +2415,7 @@ function showPartMenu(mesh) {
         return;
     }
     
-    // Fade out all other parts (50% opacity) while keeping clicked part at full opacity
+    // Fade out all other parts (10% opacity) while keeping clicked part at full opacity
     if (porscheModel && mesh) {
         meshOriginalOpacities.clear();
         
@@ -2429,13 +2429,13 @@ function showPartMenu(mesh) {
                         child.material.forEach((mat, idx) => {
                             const originalOpacity = mat.opacity !== undefined ? mat.opacity : 1.0;
                             meshOriginalOpacities.set(`${child.uuid}_${idx}`, originalOpacity);
-                            mat.opacity = 0.5;
+                            mat.opacity = 0.1; // Much lower opacity for dramatic focus
                             mat.transparent = true;
                         });
                     } else {
                         const originalOpacity = child.material.opacity !== undefined ? child.material.opacity : 1.0;
                         meshOriginalOpacities.set(child.uuid, originalOpacity);
-                        child.material.opacity = 0.5;
+                        child.material.opacity = 0.1; // Much lower opacity for dramatic focus
                         child.material.transparent = true;
                     }
                 }
