@@ -1116,10 +1116,27 @@ async function loadPartSelectSound() {
 
 // Play part selection sound (forward or reverse)
 function playPartSelectSound(reverse = false) {
-    if (!audioContext || audioContext.state === 'suspended') {
+    // Initialize audio context if needed
+    initAudioContext();
+    
+    if (!audioContext) {
+        // If audio context still not available, try to load and play later
+        if (!partSelectSoundBuffer && !partSelectSoundReversedBuffer) {
+            loadPartSelectSound().then(() => {
+                if (audioContext) {
+                    playPartSelectSound(reverse);
+                }
+            });
+        }
+        return;
+    }
+    
+    // Resume if suspended
+    if (audioContext.state === 'suspended') {
         audioContext.resume();
     }
     
+    // Load sound if not already loaded
     if (!partSelectSoundBuffer && !partSelectSoundReversedBuffer) {
         loadPartSelectSound().then(() => playPartSelectSound(reverse));
         return;
