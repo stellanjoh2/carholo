@@ -117,14 +117,14 @@ if (IS_MOBILE) {
     // Disable pointer events on canvas
     renderer.domElement.style.pointerEvents = 'none';
 } else {
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.enablePan = true;
-    controls.panSpeed = 0.8;
-    controls.screenSpacePanning = true;
-    controls.mouseButtons = {
-        LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.DOLLY,
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enablePan = true;
+controls.panSpeed = 0.8;
+controls.screenSpacePanning = true;
+controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
         RIGHT: THREE.MOUSE.PAN
     };
     controls.keys = {
@@ -152,23 +152,23 @@ if (!IS_MOBILE) {
     });
 
     // Modifier key support for panning (CMD/Ctrl + left mouse)
-    const domElement = renderer.domElement;
-    let isModifierPressed = false;
+const domElement = renderer.domElement;
+let isModifierPressed = false;
 
-    domElement.addEventListener('mousedown', (event) => {
-        isModifierPressed = event.metaKey || event.ctrlKey;
-        if (isModifierPressed && event.button === 0) {
-            controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
-        } else if (!isModifierPressed && event.button === 0) {
-            controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-        }
-    });
+domElement.addEventListener('mousedown', (event) => {
+    isModifierPressed = event.metaKey || event.ctrlKey;
+    if (isModifierPressed && event.button === 0) {
+        controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+    } else if (!isModifierPressed && event.button === 0) {
+        controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    }
+});
 
-    domElement.addEventListener('mouseup', () => {
-        if (!isModifierPressed) {
-            controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-        }
-    });
+domElement.addEventListener('mouseup', () => {
+    if (!isModifierPressed) {
+        controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    }
+});
 }
 
 // ============================================================================
@@ -2183,7 +2183,7 @@ function onMouseMove(event) {
 
 // Only enable mouse interactions on desktop
 if (!IS_MOBILE) {
-    window.addEventListener('mousemove', onMouseMove);
+window.addEventListener('mousemove', onMouseMove);
 }
 
 // Part menu state and click detection
@@ -2514,97 +2514,8 @@ function showPartMenu(mesh) {
     // Pause car rotation when menu opens
     autoRotateStateBeforeMenu = autoRotateEnabled;
     autoRotateEnabled = false;
-        // Get mesh bounding box to find center and size
-        const bbox = new THREE.Box3().setFromObject(mesh);
-        const partCenter = bbox.getCenter(new THREE.Vector3());
-        const partSize = bbox.getSize(new THREE.Vector3());
-        const maxSize = Math.max(partSize.x, partSize.y, partSize.z);
-        
-        // Ensure we have a valid size
-        const safeSize = maxSize > 0.001 ? maxSize : 1.0;
-        
-        // Calculate direction from part center to current camera position
-        const currentToPart = camera.position.clone().sub(partCenter);
-        let cameraDirection = currentToPart.clone().normalize();
-        
-        // If direction is invalid or too small, use a default viewing angle
-        if (!cameraDirection.length() || !Number.isFinite(cameraDirection.x) || 
-            Math.abs(cameraDirection.length()) < 0.1) {
-            cameraDirection.set(0.3, 0.5, 1).normalize();
-        }
-        
-        // Calculate distance: zoom in closer (about 2-3x the part size)
-        const zoomDistance = safeSize * 2.5;
-        
-        // Calculate new camera position: part center + direction * distance
-        const newCameraPos = partCenter.clone().add(
-            cameraDirection.multiplyScalar(zoomDistance)
-        );
-        
-        // Kill any ongoing camera animation
-        if (cameraFocusAnimation) {
-            cameraFocusAnimation.kill();
-        }
-        
-        // Create animation objects for GSAP to tween
-        const camPos = { 
-            x: camera.position.x, 
-            y: camera.position.y, 
-            z: camera.position.z 
-        };
-        const camTarget = { 
-            x: controls.target.x, 
-            y: controls.target.y, 
-            z: controls.target.z 
-        };
-        const targetPos = { 
-            x: newCameraPos.x, 
-            y: newCameraPos.y, 
-            z: newCameraPos.z 
-        };
-        const targetTarget = { 
-            x: partCenter.x, 
-            y: partCenter.y, 
-            z: partCenter.z 
-        };
-        
-        // Create timeline for synchronized animation
-        const cameraTimeline = gsap.timeline();
-        
-        // Animate camera position and target together
-        cameraTimeline
-            .to(camPos, {
-                x: targetPos.x,
-                y: targetPos.y,
-                z: targetPos.z,
-                duration: 1.0,
-                ease: 'power2.inOut',
-                onUpdate: () => {
-                    if (Number.isFinite(camPos.x) && Number.isFinite(camPos.y) && Number.isFinite(camPos.z)) {
-                        camera.position.set(camPos.x, camPos.y, camPos.z);
-                        camera.updateProjectionMatrix();
-                    }
-                }
-            }, 0) // Start at time 0
-            .to(camTarget, {
-                x: targetTarget.x,
-                y: targetTarget.y,
-                z: targetTarget.z,
-                duration: 1.0,
-                ease: 'power2.inOut',
-                onUpdate: () => {
-                    if (Number.isFinite(camTarget.x) && Number.isFinite(camTarget.y) && Number.isFinite(camTarget.z)) {
-                        controls.target.set(camTarget.x, camTarget.y, camTarget.z);
-                        controls.update();
-                    }
-                }
-            }, 0); // Start at time 0 (same time as position)
-        
-        // Store timeline reference
-        cameraFocusAnimation = cameraTimeline;
-    }
     
-    // Keep clicked mesh emissive while menu is open - DO THIS FIRST before menuVisible
+    // Keep clicked mesh emissive while menu is open
     if (mesh && mesh.isMesh && mesh.material) {
         // Store original material if not already stored
         if (!clickedMeshOriginalMaterial) {
