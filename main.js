@@ -2485,8 +2485,12 @@ function showPartMenu(mesh) {
         return;
     }
     
-    // Play part selection sound (forward)
-    playPartSelectSound(false);
+    // Play part selection sound (forward) - non-blocking, won't prevent popup from opening
+    try {
+        playPartSelectSound(false);
+    } catch (error) {
+        console.warn('Failed to play part selection sound:', error);
+    }
     
     // Pause car rotation when menu opens
     autoRotateStateBeforeMenu = autoRotateEnabled;
@@ -2875,8 +2879,12 @@ function hidePartMenu() {
     const gsap = window.gsap || window.GSAP;
     if (!gsap) return;
     
-    // Play part selection sound in reverse when closing
-    playPartSelectSound(true);
+    // Play part selection sound in reverse when closing - non-blocking
+    try {
+        playPartSelectSound(true);
+    } catch (error) {
+        console.warn('Failed to play part selection sound (reverse):', error);
+    }
     
     const overlay = document.getElementById('part-menu-overlay');
     const container = document.getElementById('part-menu-container');
