@@ -1,117 +1,140 @@
-import * as THREE from 'three';
-import { Reflector } from 'three/addons/objects/Reflector.js';
+/**
+ * Porsche 911 3D Configurator
+ * Interactive 3D model viewer with part inspection, hover effects, and post-processing
+ */
 
-// Shared glass material to ensure identical appearance across all car glass parts
-let __sharedGlassMaterial = null;
-// Dedicated windshield glass (slightly more transparent)
-let __windshieldGlassMaterial = null;
+// ============================================================================
+// IMPORTS
+// ============================================================================
+
+import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
-// Debug: Check if Three.js loaded correctly
-console.log('Three.js version:', THREE.REVISION);
-console.log('Three.js loaded successfully');
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
 
-// Scene setup
-console.log('Creating scene...');
+const CONFIG = {
+    CAMERA: {
+        FOV: 50,
+        NEAR: 0.1,
+        FAR: 5000
+    },
+    BLOOM: {
+        STRENGTH: 1.2,
+        RADIUS: 0.8,
+        THRESHOLD: 0.85
+    },
+    FISHEYE: {
+        FOV: 60,
+        STRENGTH: 0.165,
+        CYLINDRICAL_RATIO: 1.0
+    },
+    RGB_SPLIT: {
+        AMOUNT: 0.002
+    },
+    GRAIN: {
+        AMOUNT: 0.075
+    },
+    FOG: {
+        COLOR: 0xff6600,
+        DENSITY: 0.06
+    },
+    CLICK: {
+        THRESHOLD: 10,
+        MAX_TIME: 500
+    },
+    SOUND: {
+        THROTTLE: 50
+    }
+};
+
+// ============================================================================
+// SCENE SETUP
+// ============================================================================
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a1a);
-console.log('Scene created with background color:', scene.background);
-
-// Custom height-based ground fog will be added as post-processing effect
 
 const camera = new THREE.PerspectiveCamera(
-    50,
+    CONFIG.CAMERA.FOV,
     window.innerWidth / window.innerHeight,
-    0.1,
-    5000
+    CONFIG.CAMERA.NEAR,
+    CONFIG.CAMERA.FAR
 );
-// Ensure camera (and its children like UI elements) are part of the scene graph
-scene.add(camera);
+scene.add(camera); // Required for camera children (UI elements) to render
 camera.position.set(0, 5, 10);
 camera.updateProjectionMatrix();
 
-console.log('Creating renderer...');
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
-    preserveDrawingBuffer: true  // Disable CORS restrictions
+    preserveDrawingBuffer: true
 });
-console.log('Renderer created:', renderer);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.3; // Much lower to see reflections
+renderer.toneMappingExposure = 0.3;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-console.log('Renderer configured, canvas:', renderer.domElement);
 
-// Append canvas to container
-console.log('Looking for canvas container...');
 const container = document.getElementById('canvas-container');
-console.log('Container found:', container);
 if (container) {
     container.appendChild(renderer.domElement);
-    console.log('Canvas appended to container');
 } else {
     document.body.appendChild(renderer.domElement);
-    console.log('Canvas appended to body (fallback)');
 }
 
-// Controls
+// ============================================================================
+// CAMERA CONTROLS
+// ============================================================================
+
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-
-// Track drag state (declared early for OrbitControls listeners)
-let isDragging = false;
-
-// Track if camera is being rotated/dragged
-let cameraIsBeingRotated = false;
-let lastCameraRotationTime = 0;
-controls.addEventListener('start', () => {
-    cameraIsBeingRotated = true;
-    isDragging = true; // Also mark as dragging to prevent menu
-    lastCameraRotationTime = Date.now(); // Track when user manually starts rotating
-});
-controls.addEventListener('end', () => {
-    cameraIsBeingRotated = false;
-    // Don't reset isDragging here - let it reset on next click
-});
-
-// (Removed) handheld idle camera motion
-
-// Set up mouse buttons
-controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
-controls.mouseButtons.RIGHT = null; // Disable right-click
-
-// Set up keyboard panning (CMD/Ctrl + left mouse drag)
 controls.enablePan = true;
 controls.panSpeed = 0.8;
 controls.screenSpacePanning = true;
-
-// Enable CMD/Ctrl + left mouse drag for panning
 controls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
     MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN  // Re-enable right-click for panning with modifier
+    RIGHT: THREE.MOUSE.PAN
+};
+controls.keys = {
+    LEFT: 'ArrowLeft',
+    UP: 'ArrowUp',
+    RIGHT: 'ArrowRight',
+    BOTTOM: 'ArrowDown'
 };
 
-// Override to use middle button for pan, or add custom logic for CMD+left
+// Track interaction state for menu/click detection
+let isDragging = false;
+let cameraIsBeingRotated = false;
+let lastCameraRotationTime = 0;
+
+controls.addEventListener('start', () => {
+    cameraIsBeingRotated = true;
+    isDragging = true;
+    lastCameraRotationTime = Date.now();
+});
+
+controls.addEventListener('end', () => {
+    cameraIsBeingRotated = false;
+});
+
+// Modifier key support for panning (CMD/Ctrl + left mouse)
 const domElement = renderer.domElement;
 let isModifierPressed = false;
 
 domElement.addEventListener('mousedown', (event) => {
     isModifierPressed = event.metaKey || event.ctrlKey;
-    
     if (isModifierPressed && event.button === 0) {
-        // CMD/CTRL + Left mouse = Pan
         controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
     } else if (!isModifierPressed && event.button === 0) {
-        // Normal Left mouse = Rotate
         controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
     }
 });
@@ -122,16 +145,15 @@ domElement.addEventListener('mouseup', () => {
     }
 });
 
-// Keyboard keys for panning
-controls.keys = {
-    LEFT: 'ArrowLeft',
-    UP: 'ArrowUp',
-    RIGHT: 'ArrowRight',
-    BOTTOM: 'ArrowDown'
-};
+// ============================================================================
+// LIGHTING UTILITIES
+// ============================================================================
 
-// 3-Point Studio Lighting Setup
-// Function to convert Kelvin to RGB
+/**
+ * Converts Kelvin temperature to RGB color
+ * @param {number} kelvin - Color temperature in Kelvin
+ * @returns {THREE.Color} RGB color
+ */
 function kelvinToRgb(kelvin) {
     const temp = kelvin / 100;
     let r, g, b;
@@ -161,10 +183,12 @@ function kelvinToRgb(kelvin) {
     return new THREE.Color(r / 255, g / 255, b / 255);
 }
 
-// Studio 3-Point Lighting with Directional Lights for even illumination
+// ============================================================================
+// LIGHTING SETUP
+// ============================================================================
 
-// Key Light (Primary) - Neutral 6000K from top-right
-const keyLight = new THREE.DirectionalLight(kelvinToRgb(6000), 2.0); // -50%
+// 3-Point Studio Lighting
+const keyLight = new THREE.DirectionalLight(kelvinToRgb(6000), 2.0);
 keyLight.position.set(8, 10, 6);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.width = 2048;
@@ -177,33 +201,30 @@ keyLight.shadow.camera.top = 10;
 keyLight.shadow.camera.bottom = -10;
 scene.add(keyLight);
 
-// Fill Light - Warm 3200K from left
-const fillLight = new THREE.DirectionalLight(kelvinToRgb(3200), 2.5); // -50%
+const fillLight = new THREE.DirectionalLight(kelvinToRgb(3200), 2.5);
 fillLight.position.set(-8, 6, 5);
 scene.add(fillLight);
 
-// Back Light - Cool 8000K from behind
-const backLight = new THREE.DirectionalLight(kelvinToRgb(8000), 2.0); // -50%
+const backLight = new THREE.DirectionalLight(kelvinToRgb(8000), 2.0);
 backLight.position.set(-3, 8, -10);
 scene.add(backLight);
 
-// Ambient fill for overall illumination
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Increased significantly
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
+// ============================================================================
+// POST-PROCESSING SETUP
+// ============================================================================
 
-// No HDRI - keeping it lightweight
-
-// Post-processing with Bloom
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.2, // strength
-    0.7, // radius
-    0.9  // threshold (much higher to reduce burn-out and flickering)
+    CONFIG.BLOOM.STRENGTH,
+    CONFIG.BLOOM.RADIUS,
+    CONFIG.BLOOM.THRESHOLD
 );
 composer.addPass(bloomPass);
 
@@ -255,9 +276,9 @@ const fisheyeShader = {
 };
 
 const fisheyePass = new ShaderPass(fisheyeShader);
-const horizontalFOV = 60; // Subtle wide-angle
-const strength = 0.165; // Increased by 10% from 0.15
-const cylindricalRatio = 1.0;
+const horizontalFOV = CONFIG.FISHEYE.FOV;
+const strength = CONFIG.FISHEYE.STRENGTH;
+const cylindricalRatio = CONFIG.FISHEYE.CYLINDRICAL_RATIO;
 const height = Math.tan(THREE.MathUtils.degToRad(horizontalFOV) / 2) / camera.aspect;
 
 fisheyePass.uniforms.strength.value = strength;
@@ -421,11 +442,7 @@ const badTVShader = {
     `
 };
 
-// const badTVPass = new ShaderPass(badTVShader);
-// let badTVTime = 0;
-// composer.addPass(badTVPass);
-
-// Film grain effect - very subtle dark grain
+// Film grain effect
 const grainShader = {
     uniforms: {
         tDiffuse: { value: null },
@@ -465,11 +482,12 @@ const grainShader = {
 };
 
 const grainPass = new ShaderPass(grainShader);
+grainPass.uniforms.amount.value = CONFIG.GRAIN.AMOUNT;
 let grainTime = 0;
 composer.addPass(grainPass);
 
-// Simple ground fog using standard Three.js fog (orange)
-scene.fog = new THREE.FogExp2(0xff6600, 0.06);
+// Fog
+scene.fog = new THREE.FogExp2(CONFIG.FOG.COLOR, CONFIG.FOG.DENSITY);
 
 // Panel background blur (shader-based, only under the info panel rect)
 const panelBlurShader = {
@@ -558,19 +576,15 @@ const panelBlurShader = {
     `
 };
 
-const enablePanelBlur = false;
+// Panel blur (disabled by default for performance)
+const ENABLE_PANEL_BLUR = false;
 let panelBlurPass = null;
-if (enablePanelBlur) {
+if (ENABLE_PANEL_BLUR) {
     panelBlurPass = new ShaderPass(panelBlurShader);
     composer.addPass(panelBlurPass);
 }
 
-// Mouse position for shader inputs
-let mouseX = 0;
-let mouseY = 0;
-
-// Raycaster for hover detection
-const raycaster = new THREE.Raycaster();
+// Mouse position and raycaster are declared in INTERACTION STATE section above
 const mouse = new THREE.Vector2();
 let hoveredMesh = null;
 let hoverFadeProgress = 0;
@@ -595,14 +609,22 @@ let lockRingAnim = {
 };
 
 let infoPanelEnabled = true;
-// Toggle for spawning a hover point light
-const ENABLE_HOVER_LIGHT = true;
 let autoRotateEnabled = true;
-const ENABLE_SPOT_SHADOW = false; // turn off spotlight shadowcaster for performance
-const ENABLE_GHOST_POINTS = false; // disable duplicated car particles
-let assetsReady = false; // mark when scene finished loading
+let assetsReady = false;
 
-// Compute a robust local-space center for a mesh suitable for attaching hover lights
+// Shared glass materials
+let __sharedGlassMaterial = null;
+let __windshieldGlassMaterial = null;
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Computes a stable local-space center for a mesh, suitable for attaching hover lights
+ * @param {THREE.Mesh} targetMesh - The mesh to compute center for
+ * @returns {THREE.Vector3} Local-space center position
+ */
 function getStableLocalCenter(targetMesh) {
     const tmpBox = new THREE.Box3();
     const tmpVec = new THREE.Vector3();
@@ -911,7 +933,7 @@ hoverSound.volume = 0.3;
 // Web Audio API sound generator for retro/digital UI sounds
 let audioContext = null;
 let soundThrottleLastPlayed = {};
-const SOUND_THROTTLE = 50; // Minimum ms between same sound type
+const SOUND_THROTTLE = CONFIG.SOUND.THROTTLE;
 
 // Initialize audio context on first user interaction (browser requirement)
 function initAudioContext() {
@@ -2123,9 +2145,8 @@ const MENU_MOUSE_FOLLOW_STRENGTH = 15; // Pixels of movement per screen edge dis
 // Track mouse down position to detect drag vs click
 let mouseDownPos = { x: 0, y: 0 };
 let mouseDownTime = 0;
-// isDragging is declared earlier near OrbitControls
-const CLICK_THRESHOLD = 10; // pixels - max movement to be considered a click (increased from 5)
-const CLICK_MAX_TIME = 500; // ms - max time for a click (increased from 300)
+const CLICK_THRESHOLD = CONFIG.CLICK.THRESHOLD;
+const CLICK_MAX_TIME = CONFIG.CLICK.MAX_TIME;
 
 // Track when mouse button goes down
 function onMouseDown(event) {
