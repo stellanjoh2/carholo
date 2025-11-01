@@ -32,9 +32,18 @@
             z-index: 99999; /* Above everything */
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(10px);
+            /* Perfect centering */
+            display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            /* Ensure proper centering on all devices */
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            margin: 0;
+            padding: 0;
         }
         
         #mobile-message.active {
@@ -48,6 +57,10 @@
             padding: 40px;
             line-height: 1.6;
             font-weight: 700;
+            /* Ensure text itself is centered */
+            width: 100%;
+            max-width: 90%;
+            box-sizing: border-box;
         }
         
         /* Hide all UI elements on mobile */
