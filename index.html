@@ -100,6 +100,9 @@
             z-index: 10001; /* Higher than all overlays (10000 for out of funds, 9999 for part menu) to be visible on top */
             transform: translate(-50%, -50%);
         }
+        .wiki-lightbox-overlay.visible ~ #cursor-cross {
+            z-index: 10003 !important; /* Cursor above lightbox when it's open */
+        }
         #cursor-cross::before,
         #cursor-cross::after {
             content: '';
@@ -249,7 +252,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
             transition: all 0.3s ease;
         }
@@ -292,7 +295,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
             transition: all 0.3s ease;
         }
@@ -338,7 +341,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
             transition: all 0.3s ease;
         }
@@ -359,7 +362,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
             transition: all 0.3s ease;
         }
@@ -380,7 +383,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
             transition: all 0.3s ease;
         }
@@ -616,7 +619,7 @@
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -670,7 +673,7 @@
             height: 0;
             background: #ffd700;
             border-radius: 3px; /* Increased from 2px to match taller scrollbar */
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             transition: background 0.15s ease;
         }
         #porsche-history-scrollbar-thumb:hover {
@@ -714,7 +717,7 @@
             font-size: 20px; /* Match part menu option font size */
             font-weight: 400; /* Match part menu option font weight */
             text-align: center; /* Center aligned */
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
             opacity: 0;
             transform: translateY(20px); /* Match part menu option initial transform */
@@ -817,7 +820,7 @@
             font-size: 20px; /* Match done button font size */
             font-weight: 400; /* Match done button font weight */
             text-align: center; /* Center aligned text */
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
             opacity: 0;
             transform: translateY(20px); /* Match done button initial transform */
@@ -888,6 +891,7 @@
             z-index: 1; /* Behind image */
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
             opacity: 1; /* Visible initially */
+            pointer-events: none; /* Don't block clicks on images */
         }
         /* Image should start above placeholder */
         .porsche-history-image img,
@@ -895,9 +899,11 @@
             position: relative;
             z-index: 2; /* Above placeholder */
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
+            pointer-events: auto; /* Enable clicks on images */
         }
         /* Looping interlace effect overlay on images */
         .porsche-history-image::before {
+            pointer-events: none; /* Don't block clicks */
             content: '';
             position: absolute;
             top: 0;
@@ -929,13 +935,37 @@
             clip-path: inset(0 0% 0 0); /* End: fully revealed */
             transition: opacity 0.6s cubic-bezier(0.85, 0, 0.15, 1), transform 0.6s cubic-bezier(0.85, 0, 0.15, 1), clip-path 0.8s cubic-bezier(0.85, 0, 0.15, 1); /* Sharp quant ease */
         }
-        .porsche-history-image img,
-        .porsche-history-image video {
+        .porsche-history-image img {
             width: 100%;
             height: 100%;
             object-fit: cover; /* Crop to fit the box */
             display: block;
             max-width: 1200px; /* Reasonable max width - images are displayed at 80% of text width anyway (~720px max) */
+            pointer-events: auto; /* Enable clicks on images */
+            cursor: none !important; /* Always use custom cursor */
+            transition: transform 0.3s ease; /* Smooth scale animation */
+        }
+        .porsche-history-image img:hover {
+            transform: scale(1.08); /* Scale up slightly on hover */
+        }
+        /* Videos in regular images should not be clickable for lightbox */
+        .porsche-history-image video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            max-width: 1200px;
+            pointer-events: none; /* Disable clicks on videos */
+            cursor: none !important; /* Always use custom cursor */
+        }
+        /* Videos in fullwidth images can be clicked to open associated image */
+        .porsche-history-fullwidth-image video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            pointer-events: auto; /* Enable clicks to open associated image in lightbox */
+            cursor: none !important; /* Always use custom cursor */
         }
         .porsche-history-image img {
             animation: imageFlicker 0.05s linear infinite alternate; /* Fast flicker between 1.0 and 0.98 opacity */
@@ -1099,6 +1129,155 @@
             pointer-events: all;
             cursor: none !important;
         }
+        /* Wiki Image Lightbox */
+        .wiki-lightbox-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10002; /* Above wiki window (10000) */
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .wiki-lightbox-overlay.visible {
+            display: flex;
+            cursor: none !important; /* Always use custom cursor */
+        }
+        .wiki-lightbox-overlay * {
+            cursor: none !important; /* All elements inside lightbox use custom cursor */
+        }
+        .wiki-lightbox-overlay.visible ~ #cursor-cross,
+        .wiki-lightbox-overlay.visible #cursor-cross {
+            z-index: 10003 !important; /* Cursor above lightbox images */
+        }
+        #wiki-lightbox-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            cursor: none !important; /* Always use custom cursor */
+        }
+        #wiki-lightbox-container {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            cursor: none !important; /* Always use custom cursor */
+        }
+        #wiki-lightbox-backdrop {
+            cursor: none !important; /* Always use custom cursor */
+        }
+        #wiki-lightbox-image,
+        #wiki-lightbox-video {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border: none; /* Remove yellow stroke */
+            box-shadow: none; /* Remove yellow drop shadow */
+            filter: blur(20px); /* Start blurred for animation */
+            transform: scale(0.9); /* Start smaller for animation */
+            opacity: 0; /* Start invisible */
+            transition: filter 0.4s ease, transform 0.4s ease, opacity 0.3s ease;
+            position: relative; /* Position above background */
+            z-index: 2; /* Above background, below buttons */
+        }
+        /* Blurred background duplicate */
+        #wiki-lightbox-image-bg,
+        #wiki-lightbox-video-bg {
+            position: absolute;
+            inset: 0;
+            width: 150%; /* Scale up 50% */
+            height: 150%; /* Scale up 50% */
+            object-fit: cover;
+            filter: blur(50px); /* Extreme Gaussian blur */
+            opacity: 0; /* Start at 0 for ambilight effect */
+            transition: opacity 2s ease-out !important; /* Slow 2s fade in with ease-out curve for ambilight - important to override inline styles */
+            z-index: 1; /* Above backdrop but below main image and buttons */
+            pointer-events: none; /* Don't block clicks */
+            transform: translate(-16.67%, -16.67%); /* Center the 150% scaled image */
+        }
+        .wiki-lightbox-overlay.visible #wiki-lightbox-image-bg.loaded,
+        .wiki-lightbox-overlay.visible #wiki-lightbox-video-bg.loaded {
+            opacity: 1.0 !important; /* Fade to full opacity over 2s with ease-out for ambilight effect */
+        }
+        #wiki-lightbox-image.loaded,
+        #wiki-lightbox-video.loaded {
+            filter: blur(0px) !important; /* Clear blur */
+            transform: scale(1) !important; /* Full size */
+            opacity: 1 !important; /* Fully visible - no opacity change during navigation */
+            transition: filter 0.25s ease, transform 0.25s ease; /* Smooth transitions (no opacity transition) */
+        }
+        .wiki-lightbox-overlay.closing #wiki-lightbox-image,
+        .wiki-lightbox-overlay.closing #wiki-lightbox-video {
+            filter: blur(10px) !important;
+            transform: scale(0.95) !important;
+            opacity: 0 !important;
+            transition: filter 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+        }
+        .wiki-lightbox-close {
+            position: absolute;
+            top: 20px; /* Moved up closer */
+            right: 20px; /* Closer to edge */
+            background: transparent; /* No background */
+            border: none; /* No border */
+            color: #ffd700;
+            font-size: 28px; /* Smaller, simpler */
+            width: 32px; /* Smaller */
+            height: 32px; /* Smaller */
+            cursor: none !important; /* Always use custom cursor */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s ease;
+            z-index: 3; /* Above blurry background and main image */
+            font-family: 'DM Mono', monospace;
+            font-weight: 400;
+        }
+        .wiki-lightbox-close:hover {
+            color: #fff;
+            transform: scale(1.2);
+        }
+        .wiki-lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-size: 36px;
+            width: 48px;
+            height: 48px;
+            cursor: none !important; /* Always use custom cursor */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s ease;
+            z-index: 3; /* Above blurry background and main image */
+            font-family: 'DM Mono', monospace;
+            font-weight: 400;
+        }
+        .wiki-lightbox-nav:hover {
+            background: rgba(255, 215, 0, 0.2);
+            color: #fff;
+            transform: translateY(-50%) scale(1.1);
+        }
+        .wiki-lightbox-nav-left {
+            left: 20px;
+        }
+        .wiki-lightbox-nav-right {
+            right: 20px;
+        }
+        .wiki-lightbox-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
         #out-of-funds-backdrop {
             position: absolute;
             inset: 0;
@@ -1147,7 +1326,7 @@
             font-family: 'DM Mono', monospace;
             font-size: 20px;
             font-weight: 400;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
             width: fit-content;
         }
@@ -1222,7 +1401,7 @@
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1245,7 +1424,7 @@
             background: rgba(255, 215, 0, 0.1); /* Neutral state */
             border: 1px solid #ffd700; /* Solid yellow with no opacity */
             border-radius: 0; /* No rounded corners */
-            cursor: pointer;
+            cursor: none !important; /* Always use custom cursor */
             font-family: 'DM Mono', monospace;
             font-size: 20px; /* Increased by ~25% from 16px (16 * 1.25 = 20) */
             color: #ffd700; /* Neutral state - yellow text */
@@ -1413,6 +1592,19 @@
         }
     }
     </script>
+    <!-- Lightbox for wiki images -->
+    <div id="wiki-image-lightbox" class="wiki-lightbox-overlay">
+        <div id="wiki-lightbox-backdrop" class="backdrop"></div>
+        <div id="wiki-lightbox-container">
+            <button id="wiki-lightbox-close" class="wiki-lightbox-close">×</button>
+            <button id="wiki-lightbox-prev" class="wiki-lightbox-nav wiki-lightbox-nav-left">‹</button>
+            <button id="wiki-lightbox-next" class="wiki-lightbox-nav wiki-lightbox-nav-right">›</button>
+            <img id="wiki-lightbox-image-bg" src="" alt="" style="display: none;">
+            <img id="wiki-lightbox-image" src="" alt="">
+            <video id="wiki-lightbox-video" src="" autoplay loop muted playsinline style="display: none;"></video>
+        </div>
+    </div>
+    
     <div id="canvas-container"></div>
     <script type="module" src="main.js"></script>
     <script>
