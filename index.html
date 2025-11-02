@@ -6,7 +6,7 @@
     <title>Porsche 911 Interactive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Mono:wght@100&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
     <style>
         * {
@@ -19,7 +19,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             user-select: none; /* Prevent text selection */
             cursor: none; /* hide default cursor */
         }
@@ -162,7 +162,7 @@
         #tooltip-content {
             background: rgba(0, 0, 0, 0.7); /* 10% lower opacity (0.8 → 0.7) */
             color: #ffd700; /* Yellow text */
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             font-size: 14px;
             font-weight: 100;
             padding: 8px 12px;
@@ -176,7 +176,7 @@
         #tooltip-part-name {
             font-weight: 700; /* Bold */
             margin-bottom: 2px;
-            font-size: 16px; /* Increased from 14px */
+            font-size: 18px; /* ~13.5pt - increased from 16px (~12pt) */
             color: #ffd700; /* Default yellow */
         }
         
@@ -427,7 +427,7 @@
         #loading-overlay.hidden { opacity: 0; pointer-events: none; }
         #loading-text {
             color: #ffd700;
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             font-size: 12px; /* half size */
             letter-spacing: 4px;
             opacity: 1;
@@ -474,7 +474,7 @@
             z-index: 1;
             text-align: left;
             letter-spacing: 2px;
-            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-family: 'DM Mono', monospace;
             font-weight: bold;
             margin-bottom: 20px;
             padding-left: 16px; /* Align with divider lines below (same as part-info padding) */
@@ -499,7 +499,7 @@
         #part-info {
             font-size: 16.5px; /* +10% from 15px */
             color: #ffd700;
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             font-weight: 100;
             line-height: 1.5;
             pointer-events: none; /* never block mouse */
@@ -578,20 +578,44 @@
             border-bottom: none; /* Match part menu - no border */
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 1000; /* Very high z-index to ensure it's on top of everything */
             padding-top: 0;
             padding-bottom: 20px;
             margin-top: 0;
             background: rgba(0, 0, 0, 0.75); /* Default background opacity */
             transition: background 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            /* Ensure it covers everything below cleanly - no conflicts with images */
+            isolation: isolate;
+            transform: translateZ(0); /* Force GPU layer for clean rendering */
+            -webkit-transform: translateZ(0);
+            /* Ensure background extends to edges to cover everything */
+            margin-left: -50px; /* Extend to container edges */
+            margin-right: -50px;
+            padding-left: 50px; /* Restore content padding */
+            padding-right: 50px;
+            width: calc(100% + 100px); /* Extend width to cover container */
+            /* Add bottom padding to ensure clean overlap with content below */
+            padding-bottom: 30px;
+            /* Allow pointer events to pass through header to enable scrolling */
+            pointer-events: none;
+        }
+        /* Re-enable pointer events on interactive elements within header */
+        #porsche-history-title,
+        #porsche-history-close {
+            pointer-events: auto;
         }
         #porsche-history-header.scrolled {
-            background: rgba(0, 0, 0, 0.5); /* Reduced opacity when scrolled */
-            padding-bottom: 10px;
+            background: rgba(0, 0, 0, 1) !important; /* Fully opaque when scrolled - !important to ensure it overrides */
+            padding-bottom: 15px;
             margin-bottom: 20px;
+            /* Add backdrop-filter for extra coverage */
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            /* Ensure it completely covers content below */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); /* Subtle shadow for depth */
         }
         #porsche-history-title {
-            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-family: 'DM Mono', monospace;
             font-size: 42px; /* Larger for magazine style */
             font-weight: bold;
             color: #ffd700;
@@ -627,7 +651,7 @@
         }
         #porsche-history-content {
             color: #ffd700;
-            font-family: 'Space Mono', 'Courier New', monospace; /* Space Mono Regular */
+            font-family: 'DM Mono', monospace; /* Space Mono Regular */
             font-size: 22px; /* 22pt body text */
             font-weight: 400; /* Regular weight */
             line-height: 1.9; /* Better line spacing for magazine */
@@ -637,6 +661,9 @@
             padding-right: 0; /* No right padding - scrollbar is outside */
             flex: 1;
             position: relative; /* Ensure positioning context for child elements */
+            /* Create proper stacking context - content stays below sticky header */
+            z-index: 0;
+            isolation: isolate; /* Create new stacking context */
             /* Hide default scrollbar */
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none; /* IE and Edge */
@@ -670,7 +697,7 @@
         }
         #porsche-history-content h3 {
             color: #ffd700;
-            font-family: 'Space Mono', 'Courier New', monospace; /* Space Mono for headings too */
+            font-family: 'DM Mono', monospace; /* Space Mono for headings too */
             font-size: 28px; /* Larger headings */
             font-weight: 700; /* Bold weight */
             margin-top: 40px;
@@ -693,7 +720,7 @@
         }
         #porsche-history-content strong {
             font-weight: bold;
-            color: #ffd700;
+            color: #ffe866; /* 25% brighter than #ffd700 */
         }
         .porsche-history-done-button {
             margin-top: 0; /* No margin - container handles spacing, matches buy button */
@@ -702,7 +729,7 @@
             border: 1px solid #ffd700; /* Match part menu option border */
             border-radius: 0; /* Match part menu option - no rounded corners */
             color: #ffd700; /* Match part menu option color */
-            font-family: 'Space Mono', 'Courier New', monospace; /* Match part menu font */
+            font-family: 'DM Mono', monospace; /* Match part menu font */
             font-size: 20px; /* Match part menu option font size */
             font-weight: 400; /* Match part menu option font weight */
             text-align: left; /* Left aligned */
@@ -738,7 +765,7 @@
             border: 1px solid #ffd700; /* Match done button border */
             border-radius: 0; /* Match done button - no rounded corners */
             color: #ffd700; /* Match done button color */
-            font-family: 'Space Mono', 'Courier New', monospace; /* Match done button font */
+            font-family: 'DM Mono', monospace; /* Match done button font */
             font-size: 20px; /* Match done button font size */
             font-weight: 400; /* Match done button font weight */
             text-align: center; /* Center aligned text */
@@ -772,7 +799,7 @@
             justify-content: center;
             margin: 30px 0;
             color: #ffd700;
-            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-family: 'DM Mono', monospace;
             font-size: 14px;
             font-weight: 300;
             opacity: 0;
@@ -842,8 +869,6 @@
             object-fit: cover; /* Crop to fit the box */
             display: block;
             max-width: 1200px; /* Reasonable max width - images are displayed at 80% of text width anyway (~720px max) */
-            filter: grayscale(100%);
-            mix-blend-mode: multiply;
             animation: imageFlicker 0.05s linear infinite alternate; /* Fast flicker between 1.0 and 0.98 opacity */
         }
         @keyframes imageFlicker {
@@ -861,40 +886,12 @@
         #porsche-history-overlay:not(.visible) .porsche-history-image::before {
             animation-play-state: paused;
         }
-        /* Yellow overlay with subtle grain for images */
-        .porsche-history-image::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffd700; /* UI yellow */
-            background-image: 
-                repeating-linear-gradient(
-                    0deg,
-                    rgba(0, 0, 0, 0.04) 0px,
-                    transparent 1px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.04) 2px
-                ),
-                repeating-linear-gradient(
-                    90deg,
-                    rgba(0, 0, 0, 0.04) 0px,
-                    transparent 1px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.04) 2px
-                );
-            mix-blend-mode: multiply;
-            pointer-events: none;
-            z-index: 1; /* Above image and interlace */
-        }
         .porsche-history-image-caption {
             margin-top: 8px;
             margin-bottom: 62px; /* Match spacing above image (matches wrapper margin-top) */
             margin-left: 0; /* Align with image left edge - same container */
             width: 100%; /* Full width of wrapper, same as image */
-            font-family: 'Space Mono', 'Courier New', monospace; /* Space Mono Regular */
+            font-family: 'DM Mono', monospace; /* Space Mono Regular */
             font-size: 12px; /* Smaller size for captions */
             font-weight: 400; /* Regular weight */
             color: rgba(255, 215, 0, 0.7);
@@ -921,9 +918,13 @@
             /* 4:3 aspect ratio for visible area */
             aspect-ratio: 4 / 3;
             will-change: transform;
-            /* Ensure proper clipping to prevent edge artifacts */
-            clip-path: inset(0);
-            -webkit-clip-path: inset(0);
+            /* Force GPU acceleration for smoother clipping */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* Ensure it stays below sticky header - lower z-index */
+            z-index: 0; /* Stay within content's stacking context */
+            /* Ensure it doesn't conflict with sticky header - create isolated layer */
+            position: relative;
         }
         .porsche-history-fullwidth-image img {
             width: 100%;
@@ -936,13 +937,14 @@
             position: relative;
             top: -25%; /* Move up by half of extra height (25% of container = half of 50% extra) to center */
             transform-origin: center center; /* Ensure transforms happen from center */
-            filter: grayscale(100%);
-            mix-blend-mode: multiply;
             animation: imageFlicker 0.05s linear infinite alternate;
             will-change: transform; /* Optimize for parallax animation */
             /* Prevent edge artifacts during parallax */
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
+            /* Ensure image stays below sticky header */
+            z-index: 0;
+            position: relative;
         }
         /* Caption overlay on full-width parallax image */
         .porsche-history-fullwidth-image-caption {
@@ -950,7 +952,7 @@
             bottom: 20px; /* Padding from bottom */
             left: 20px; /* Padding from left */
             max-width: 60%; /* Don't span entire width, leave space */
-            font-family: 'Space Mono', 'Courier New', monospace; /* Space Mono Regular */
+            font-family: 'DM Mono', monospace; /* Space Mono Regular */
             font-size: 14px; /* Slightly larger than regular captions */
             font-weight: 400; /* Regular weight */
             color: #ffd700; /* Yellow text */
@@ -979,7 +981,7 @@
                 rgba(0, 0, 0, 0.25) 2px
             );
             pointer-events: none;
-            z-index: 2; /* Above image, below yellow overlay */
+            z-index: 0; /* Lower z-index to ensure it stays below sticky header */
             animation: interlaceMove 0.1s linear infinite;
             /* Ensure proper clipping */
             clip-path: inset(0);
@@ -987,40 +989,6 @@
         }
         #porsche-history-overlay:not(.visible) .porsche-history-fullwidth-image::before {
             animation-play-state: paused;
-        }
-        /* Yellow overlay with grain for full-width images */
-        .porsche-history-fullwidth-image::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffd700; /* UI yellow */
-            background-image: 
-                repeating-linear-gradient(
-                    0deg,
-                    rgba(0, 0, 0, 0.04) 0px,
-                    transparent 1px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.04) 2px
-                ),
-                repeating-linear-gradient(
-                    90deg,
-                    rgba(0, 0, 0, 0.04) 0px,
-                    transparent 1px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.04) 2px
-                );
-            mix-blend-mode: multiply;
-            pointer-events: none;
-            z-index: 1; /* Above image and interlace */
-            /* Add a tiny inset to prevent edge artifacts - the yellow line glitch */
-            clip-path: inset(0.5px);
-            -webkit-clip-path: inset(0.5px);
-            /* Additional anti-aliasing */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
         }
         
         /* Out of Funds Overlay - styled like part menu but red */
@@ -1065,7 +1033,7 @@
             border-bottom: none;
         }
         #out-of-funds-title {
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             font-size: 32px;
             font-weight: 400;
             color: #ff4444;
@@ -1083,7 +1051,7 @@
             border: 1px solid #ff4444;
             border-radius: 0;
             color: #ff4444;
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             font-size: 20px;
             font-weight: 400;
             cursor: pointer;
@@ -1146,7 +1114,7 @@
             border-bottom: none; /* Remove fine line between headline and buttons */
         }
         #part-menu-title {
-            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-family: 'DM Mono', monospace;
             font-size: 34px; /* +10% from 31px (31 * 1.1 = 34.1, rounded to 34) */
             font-weight: bold;
             color: #ffd700;
@@ -1185,7 +1153,7 @@
             border: 1px solid #ffd700; /* Solid yellow with no opacity */
             border-radius: 0; /* No rounded corners */
             cursor: pointer;
-            font-family: 'Space Mono', 'Courier New', monospace;
+            font-family: 'DM Mono', monospace;
             font-size: 20px; /* Increased by ~25% from 16px (16 * 1.25 = 20) */
             color: #ffd700; /* Neutral state - yellow text */
             opacity: 0;
