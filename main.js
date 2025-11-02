@@ -3316,6 +3316,11 @@ function showPorscheHistory() {
         
         <p>Founded in 1931 by <strong>Ferdinand Porsche</strong>, the brand emerged from the same industrial fire that defined Europe between wars. The company's first masterpiece — the <strong>Volkswagen Beetle</strong> — wasn't even a Porsche model, but it established the lineage: simplicity, efficiency, and form following function.</p>
         
+        <div class="porsche-history-fullwidth-image">
+            <img src="1IL23tfaB4r5nFd36zrXy9q1FqISWflENCzz1zp8.png" alt="Porsche 911" loading="lazy" decoding="async">
+            <div class="porsche-history-fullwidth-image-caption">Ferdinand Porsche (1875–1951) — engineer, innovator, and founder of Porsche.</div>
+        </div>
+        
         <p>After World War II, Ferdinand's son <strong>Ferry Porsche</strong> decided to build something personal — a car for people who loved to drive, not just to move. The result was the <strong>Porsche 356 (1948)</strong>, a small, curved body of aluminum and spirit. It was light, quick, and soulful — and it marked the beginning of the Porsche legacy.</p>
         
         <p>But the myth didn't crystallize until 1964, when the <strong>Porsche 911</strong> appeared.</p>
@@ -3596,6 +3601,44 @@ function initPorscheHistoryScrollReveal() {
     
     // Update scrollbar on scroll
     content.addEventListener('scroll', updateScrollbar);
+    
+    // Parallax effect for full-width images
+    const handleFullWidthParallax = () => {
+        // Only process if history window is visible
+        if (!porscheHistoryVisible) return;
+        
+        const scrollTop = content.scrollTop;
+        const fullWidthImages = content.querySelectorAll('.porsche-history-fullwidth-image img');
+        
+        fullWidthImages.forEach((img) => {
+            const imageContainer = img.parentElement;
+            if (!imageContainer) return;
+            
+            const containerRect = imageContainer.getBoundingClientRect();
+            const contentRect = content.getBoundingClientRect();
+            
+            // Calculate if image is in viewport
+            const imageTop = containerRect.top - contentRect.top + scrollTop;
+            const imageBottom = imageTop + containerRect.height;
+            
+            // Only apply parallax while image is visible or just before/after
+            if (scrollTop >= imageTop - content.clientHeight && scrollTop <= imageBottom + content.clientHeight) {
+                // Calculate parallax offset - image scrolls slower than content (0.3 = 30% speed)
+                const parallaxSpeed = 0.3;
+                const scrollDelta = scrollTop - imageTop;
+                const imageOffset = scrollDelta * parallaxSpeed;
+                
+                // Apply transform to image (moves slower than scroll)
+                img.style.transform = `translateY(${imageOffset}px)`;
+            }
+        });
+    };
+    
+    content.addEventListener('scroll', handleFullWidthParallax);
+    // Initial call
+    setTimeout(() => {
+        handleFullWidthParallax();
+    }, 100);
     
     // Track scroll to update header styling (scaled title and background opacity)
     const header = document.getElementById('porsche-history-header');

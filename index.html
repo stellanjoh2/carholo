@@ -565,7 +565,7 @@
             box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: visible; /* Allow full-width images to extend beyond padding */
             /* Centering handled by GSAP via transform */
             transform: translate(-50%, -50%);
         }
@@ -618,6 +618,7 @@
             line-height: 1;
             padding: 0;
             transition: all 0.2s ease;
+            pointer-events: auto; /* Enable clicks on close button */
         }
         #porsche-history-close:hover {
             background: #ffd700;
@@ -631,9 +632,11 @@
             font-weight: 400; /* Regular weight */
             line-height: 1.9; /* Better line spacing for magazine */
             overflow-y: scroll; /* Enable scrolling */
+            overflow-x: visible; /* Allow full-width images to bleed beyond padding */
             padding-left: 0; /* No padding here - container handles left padding */
             padding-right: 0; /* No right padding - scrollbar is outside */
             flex: 1;
+            position: relative; /* Ensure positioning context for child elements */
             /* Hide default scrollbar */
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none; /* IE and Edge */
@@ -892,7 +895,7 @@
             margin-left: 0; /* Align with image left edge - same container */
             width: 100%; /* Full width of wrapper, same as image */
             font-family: 'Space Mono', 'Courier New', monospace; /* Space Mono Regular */
-            font-size: 16px; /* Keep current size */
+            font-size: 12px; /* Smaller size for captions */
             font-weight: 400; /* Regular weight */
             color: rgba(255, 215, 0, 0.7);
             text-align: left; /* Left align to match image */
@@ -907,6 +910,117 @@
         .porsche-history-image-caption.visible {
             opacity: 1;
             transform: translateY(0);
+        }
+        /* Full-width parallax images in article */
+        .porsche-history-fullwidth-image {
+            /* Full width of content area, with parallax effect */
+            position: relative;
+            width: 100%;
+            margin: 40px 0;
+            overflow: hidden;
+            /* 4:3 aspect ratio for visible area */
+            aspect-ratio: 4 / 3;
+            will-change: transform;
+            /* Ensure proper clipping to prevent edge artifacts */
+            clip-path: inset(0);
+            -webkit-clip-path: inset(0);
+        }
+        .porsche-history-fullwidth-image img {
+            width: 100%;
+            display: block;
+            /* Extra height for parallax - 150% of container height (50% extra for parallax movement) */
+            height: 150%;
+            object-fit: cover;
+            object-position: center center; /* Center the image - expands from center */
+            /* Center the image vertically - position top edge so center of image is at center of container */
+            position: relative;
+            top: -25%; /* Move up by half of extra height (25% of container = half of 50% extra) to center */
+            transform-origin: center center; /* Ensure transforms happen from center */
+            filter: grayscale(100%);
+            mix-blend-mode: multiply;
+            animation: imageFlicker 0.05s linear infinite alternate;
+            will-change: transform; /* Optimize for parallax animation */
+            /* Prevent edge artifacts during parallax */
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        /* Caption overlay on full-width parallax image */
+        .porsche-history-fullwidth-image-caption {
+            position: absolute;
+            bottom: 20px; /* Padding from bottom */
+            left: 20px; /* Padding from left */
+            max-width: 60%; /* Don't span entire width, leave space */
+            font-family: 'Space Mono', 'Courier New', monospace; /* Space Mono Regular */
+            font-size: 14px; /* Slightly larger than regular captions */
+            font-weight: 400; /* Regular weight */
+            color: #ffd700; /* Yellow text */
+            padding: 16px 20px; /* Nice padding similar to other elements */
+            line-height: 1.6;
+            z-index: 3; /* Above image effects */
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8); /* Additional text shadow for readability */
+        }
+        /* Pause full-width image animations when overlay is hidden */
+        #porsche-history-overlay:not(.visible) .porsche-history-fullwidth-image img {
+            animation-play-state: paused;
+        }
+        /* Interlace effect overlay on full-width images */
+        .porsche-history-fullwidth-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(
+                0deg,
+                transparent 0px,
+                transparent 1px,
+                rgba(0, 0, 0, 0.25) 1px,
+                rgba(0, 0, 0, 0.25) 2px
+            );
+            pointer-events: none;
+            z-index: 2; /* Above image, below yellow overlay */
+            animation: interlaceMove 0.1s linear infinite;
+            /* Ensure proper clipping */
+            clip-path: inset(0);
+            -webkit-clip-path: inset(0);
+        }
+        #porsche-history-overlay:not(.visible) .porsche-history-fullwidth-image::before {
+            animation-play-state: paused;
+        }
+        /* Yellow overlay with grain for full-width images */
+        .porsche-history-fullwidth-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffd700; /* UI yellow */
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.04) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.04) 2px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(0, 0, 0, 0.04) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.04) 2px
+                );
+            mix-blend-mode: multiply;
+            pointer-events: none;
+            z-index: 1; /* Above image and interlace */
+            /* Add a tiny inset to prevent edge artifacts - the yellow line glitch */
+            clip-path: inset(0.5px);
+            -webkit-clip-path: inset(0.5px);
+            /* Additional anti-aliasing */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
         
         /* Out of Funds Overlay - styled like part menu but red */
