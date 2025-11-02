@@ -1444,6 +1444,11 @@ function onMouseMove(event) {
                     hoveredMesh.material.dispose();
                 }
                 hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
+                // Restore original castShadow value
+                if (hoveredMesh.userData.originalCastShadow !== undefined) {
+                    hoveredMesh.castShadow = hoveredMesh.userData.originalCastShadow;
+                    hoveredMesh.userData.originalCastShadow = undefined;
+                }
                 hoveredMesh.userData.originalMaterial = null;
             }
             
@@ -1555,6 +1560,11 @@ function onMouseMove(event) {
                     hoveredMesh.material.dispose();
                 }
                 hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
+                // Restore original castShadow value
+                if (hoveredMesh.userData.originalCastShadow !== undefined) {
+                    hoveredMesh.castShadow = hoveredMesh.userData.originalCastShadow;
+                    hoveredMesh.userData.originalCastShadow = undefined;
+                }
                 hoveredMesh.userData.originalMaterial = null;
             }
             
@@ -1659,6 +1669,11 @@ function onMouseMove(event) {
                     hoveredMesh.material.dispose();
                 }
                 hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
+                // Restore original castShadow value
+                if (hoveredMesh.userData.originalCastShadow !== undefined) {
+                    hoveredMesh.castShadow = hoveredMesh.userData.originalCastShadow;
+                    hoveredMesh.userData.originalCastShadow = undefined;
+                }
                 hoveredMesh.userData.originalMaterial = null;
             }
             
@@ -1773,6 +1788,11 @@ function onMouseMove(event) {
                     }
                     const originalMat = hoveredMesh.userData.originalMaterial.clone();
                     hoveredMesh.material = originalMat;
+                    // Restore original castShadow value
+                    if (hoveredMesh.userData.originalCastShadow !== undefined) {
+                        hoveredMesh.castShadow = hoveredMesh.userData.originalCastShadow;
+                        hoveredMesh.userData.originalCastShadow = undefined;
+                    }
                     hoveredMesh.userData.originalMaterial = null;
                 }
                 
@@ -1998,6 +2018,12 @@ function onMouseMove(event) {
                         hoveredMesh.material.dispose();
                         hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
                         
+                        // Restore original castShadow value
+                        if (hoveredMesh.userData.originalCastShadow !== undefined) {
+                            hoveredMesh.castShadow = hoveredMesh.userData.originalCastShadow;
+                            hoveredMesh.userData.originalCastShadow = undefined;
+                        }
+                        
                         // Re-apply properties to prevent loss over time
                         if (hoveredMesh.material.isMeshPhysicalMaterial) {
                             hoveredMesh.material.envMap = scene.environment;
@@ -2133,7 +2159,13 @@ function onMouseMove(event) {
                         emissiveIntensity: 7.5 // 50% brighter (increased from 5.0)
                     });
                     
+                    // Store original castShadow value before disabling shadows for performance
+                    if (hoveredMesh.userData.originalCastShadow === undefined) {
+                        hoveredMesh.userData.originalCastShadow = hoveredMesh.castShadow;
+                    }
+                    
                     hoveredMesh.material = wireframeMat;
+                    hoveredMesh.castShadow = false; // Disable shadows for wireframe to improve performance
                     
                     // Create bounding box helper that respects rotation
                     if (boundingBoxHelper) {
@@ -2873,7 +2905,8 @@ function showPartMenu(mesh) {
         
         if (needsNewMaterial) {
             // Create or clone material with emissive
-            const emissiveMat = currentMat.wireframe ? 
+            const isWireframe = currentMat.wireframe;
+            const emissiveMat = isWireframe ? 
                 new THREE.MeshStandardMaterial({
                     color: statusColor,
                     wireframe: true,
@@ -2882,7 +2915,7 @@ function showPartMenu(mesh) {
                 }) :
                 currentMat.clone();
             
-            if (!currentMat.wireframe) {
+            if (!isWireframe) {
                 emissiveMat.emissive = new THREE.Color(statusColor);
                 emissiveMat.emissiveIntensity = 7.5;
             }
@@ -2890,6 +2923,16 @@ function showPartMenu(mesh) {
             if (currentMat.dispose) {
                 currentMat.dispose();
             }
+            
+            // Disable shadows for wireframe materials to improve performance
+            if (isWireframe) {
+                // Store original castShadow value before disabling
+                if (mesh.userData.originalCastShadow === undefined) {
+                    mesh.userData.originalCastShadow = mesh.castShadow;
+                }
+                mesh.castShadow = false;
+            }
+            
             mesh.material = emissiveMat;
         }
     }
@@ -3147,6 +3190,11 @@ function hidePartMenu() {
                         clickedMesh.material.dispose();
                     }
                     clickedMesh.material = clickedMeshOriginalMaterial.clone();
+                    // Restore original castShadow value
+                    if (clickedMesh.userData.originalCastShadow !== undefined) {
+                        clickedMesh.castShadow = clickedMesh.userData.originalCastShadow;
+                        clickedMesh.userData.originalCastShadow = undefined;
+                    }
                 }
                 clickedMeshOriginalMaterial = null;
             }
@@ -3433,10 +3481,10 @@ function showPorscheHistory() {
     
     // Hide images initially
     const images = content.querySelectorAll('.porsche-history-image');
-    images.forEach(img => {
-        img.classList.remove('visible');
-        img.style.opacity = '0';
-        img.style.transform = 'translateY(10px)';
+    images.forEach(container => {
+        container.classList.remove('visible');
+        container.style.opacity = '0';
+        container.style.transform = 'translateY(10px)';
     });
 
     // Hide image wrappers initially (for scroll reveal logic)
@@ -3503,6 +3551,18 @@ function showPorscheHistory() {
     porscheHistoryMouseFollow.targetX = 0;
     porscheHistoryMouseFollow.targetY = 0;
     
+    // Animate headline entry immediately (first thing to animate)
+    const title = document.getElementById('porsche-history-title');
+    if (title && gsap) {
+        gsap.to(title, {
+            opacity: 1,
+            y: 0,
+            clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+            duration: 0.8,
+            ease: 'expo.inOut'
+        });
+    }
+    
     gsap.set(container, {
         clipPath: 'inset(0% 0% 100% 0%)', // Start: fully masked (revealed from top, 100% hidden at bottom)
         y: -50 // Start 50px above final position (same as part menu)
@@ -3518,18 +3578,6 @@ function showPorscheHistory() {
             container.style.transform = `translate(calc(-50% + ${porscheHistoryMouseFollow.x}px), calc(-50% + ${gsapY + porscheHistoryMouseFollow.y}px))`;
         },
         onComplete: () => {
-            // Animate headline entry (same as blurbs - mask reveal from left to right)
-            const title = document.getElementById('porsche-history-title');
-            if (title && gsap) {
-                gsap.to(title, {
-                    opacity: 1,
-                    y: 0,
-                    clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
-                    duration: 0.8,
-                    ease: 'expo.inOut'
-                });
-            }
-            
             // Start scroll reveal effect after container reveals
             initPorscheHistoryScrollReveal();
         }
@@ -3776,7 +3824,6 @@ function initPorscheHistoryScrollReveal() {
                     // Don't clip the container - clip the image itself
                     if (img) {
                         img.style.clipPath = 'inset(0 100% 0 0)'; // Image starts masked, so yellow shows through
-                        // No translation movement - same as big image
                     }
                     placeholderBlock.style.clipPath = 'inset(0 100% 0 0)'; // Placeholder starts masked
                     
@@ -4187,16 +4234,7 @@ function initPorscheHistoryScrollReveal() {
     const doneButton = content.querySelector('.porsche-history-done-button');
     const buyButton = content.querySelector('.porsche-history-buy-button');
     
-    // Set buy button width to match done button width (minimum width)
-    function syncButtonWidths() {
-        if (doneButton && buyButton) {
-            // Force a layout calculation to get actual width
-            const doneWidth = doneButton.offsetWidth;
-            if (doneWidth > 0) {
-                buyButton.style.width = doneWidth + 'px';
-            }
-        }
-    }
+    // Buttons now use flex: 1 to split space equally - no width sync needed
     
     function checkDoneButton() {
         if (!doneButton) return;
@@ -4215,15 +4253,8 @@ function initPorscheHistoryScrollReveal() {
                         opacity: 1,
                         y: 0,
                         duration: 0.6,
-                        ease: 'power2.out',
-                        onComplete: () => {
-                            // Sync widths after done button is visible (has its natural width)
-                            syncButtonWidths();
-                        }
+                        ease: 'power2.out'
                     });
-                } else {
-                    // Fallback: sync after a short delay
-                    setTimeout(syncButtonWidths, 100);
                 }
             }
             if (buyButton && !buyButton.classList.contains('visible')) {
@@ -4242,11 +4273,7 @@ function initPorscheHistoryScrollReveal() {
         }
     }
     
-    // Sync widths immediately and on resize (if buttons exist)
-    if (doneButton && buyButton) {
-        syncButtonWidths();
-        window.addEventListener('resize', syncButtonWidths);
-    }
+    // Buttons now use flex: 1 to split space equally - no width sync needed
     
     // Add button click handlers and hover sounds
     if (doneButton) {
@@ -4335,11 +4362,18 @@ function hidePorscheHistory() {
     
     // Remove all visible classes from paragraphs, headings, image placeholders, images, captions, and done button
     if (content) {
-        const allElements = content.querySelectorAll('p, h3, .porsche-history-image-placeholder, .porsche-history-image, .porsche-history-image-caption, .porsche-history-done-button, .porsche-history-buy-button');
+        const allElements = content.querySelectorAll('p, h3, .porsche-history-image-placeholder, .porsche-history-image-caption, .porsche-history-done-button, .porsche-history-buy-button');
         allElements.forEach(el => {
             el.classList.remove('visible');
             el.style.opacity = '0';
             el.style.transform = 'translateY(10px)';
+        });
+        // Reset images
+        const images = content.querySelectorAll('.porsche-history-image');
+        images.forEach(container => {
+            container.classList.remove('visible');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(10px)';
         });
     }
     

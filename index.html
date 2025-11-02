@@ -561,7 +561,7 @@
             background: rgba(0, 0, 0, 0.75);
             border: 1px solid #ffd700;
             border-radius: 0;
-            padding: 50px; /* Equal padding on all sides now that scrollbar is outside */
+            padding: 55px; /* Slightly increased padding from window border to content */
             box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
             display: flex;
             flex-direction: column;
@@ -581,11 +581,11 @@
             margin-top: 0;
             background: rgba(0, 0, 0, 0.8); /* 0.8 opacity black background */
             /* Ensure background extends to edges to cover everything */
-            margin-left: -50px; /* Extend to container edges */
-            margin-right: -50px;
-            padding-left: 50px; /* Restore content padding */
-            padding-right: 50px;
-            width: calc(100% + 100px); /* Extend width to cover container */
+            margin-left: -55px; /* Extend to container edges */
+            margin-right: -55px;
+            padding-left: 55px; /* Restore content padding */
+            padding-right: 55px;
+            width: calc(100% + 110px); /* Extend width to cover container */
             /* Allow pointer events to pass through header to enable scrolling */
             pointer-events: none;
         }
@@ -713,13 +713,12 @@
             font-family: 'DM Mono', monospace; /* Match part menu font */
             font-size: 20px; /* Match part menu option font size */
             font-weight: 400; /* Match part menu option font weight */
-            text-align: left; /* Left aligned */
+            text-align: center; /* Center aligned */
             cursor: pointer;
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
             opacity: 0;
             transform: translateY(20px); /* Match part menu option initial transform */
-            width: fit-content; /* Fit content, left aligned - this sets the minimum width */
-            min-width: fit-content; /* Ensure minimum width based on content */
+            flex: 1; /* Split the space equally between buttons */
             position: relative;
             line-height: normal; /* Ensure consistent line-height */
         }
@@ -736,8 +735,9 @@
         .porsche-history-buttons {
             display: flex;
             flex-direction: row;
-            gap: 12px;
+            gap: 12px; /* Split in the middle between buttons */
             margin-top: 32px;
+            width: 100%; /* Stretch to fill window width */
         }
         .porsche-history-buy-button {
             margin-top: 0; /* Reset margin, handled by buttons container - match done button exactly */
@@ -754,8 +754,7 @@
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
             opacity: 0;
             transform: translateY(20px); /* Match done button initial transform */
-            width: fit-content; /* Will be set to match done button width via JavaScript */
-            min-width: fit-content; /* Match done button minimum width */
+            flex: 1; /* Split the space equally between buttons */
             position: relative;
             line-height: normal; /* Ensure line-height matches */
         }
