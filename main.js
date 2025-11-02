@@ -3323,7 +3323,7 @@ function showPorscheHistory() {
         <p>The <strong>911</strong> was an anomaly: rear-engine, perfectly imperfect, but alive in the hands of those who understood it. Over the next century, it became one of humanity's longest-running design languages — a silhouette instantly recognizable even from orbiting colonies.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="a1-scaled.jpg" alt="Porsche 911"></div>
+            <div class="porsche-history-image"><img src="a1-scaled.jpg" alt="Porsche 911" loading="lazy" decoding="async"></div>
             <div class="porsche-history-image-caption">Porsche 911. The iconic silhouette under warm studio lighting.</div>
         </div>
         
@@ -3334,7 +3334,7 @@ function showPorscheHistory() {
         <p>The <strong>911</strong> wasn't just a car; <strong>it was a ritual</strong> — a blend of engineering discipline and emotional release. Enthusiasts spoke of steering feedback, gear ratios, and throttle response with the reverence of monks describing sacred texts.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="930turbo1.jpg" alt="Porsche 930 Turbo"></div>
+            <div class="porsche-history-image"><img src="930turbo1.jpg" alt="Porsche 930 Turbo" loading="lazy" decoding="async"></div>
             <div class="porsche-history-image-caption">Porsche 930 Turbo. The legendary "Widowmaker" in motion.</div>
         </div>
         
@@ -3349,7 +3349,7 @@ function showPorscheHistory() {
         <p>The brand's design philosophy — clean, minimal, and purpose-driven — influenced not only car aesthetics but also architecture, industrial design, and digital interfaces. The timeless <strong>911 silhouette</strong> inspired furniture, fashion, and even the casings of AI robots in the 2060s.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="2015-porsche-918-spyder-weissach-package.jpeg" alt="Porsche 918 Spyder"></div>
+            <div class="porsche-history-image"><img src="2015-porsche-918-spyder-weissach-package.jpeg" alt="Porsche 918 Spyder" loading="lazy" decoding="async"></div>
             <div class="porsche-history-image-caption">Porsche 918 Spyder Weissach Package. Deep metallic tones showcasing hybrid performance.</div>
         </div>
         
@@ -3360,7 +3360,7 @@ function showPorscheHistory() {
         <p>Few brands blurred the line between the road and the racetrack like Porsche. Throughout the 20th and 21st centuries, it dominated endurance racing, especially the <strong>24 Hours of Le Mans</strong>, where it holds the record for most victories.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="le-mans-24-hours-2017---toyota.jpg" alt="24 Hours of Le Mans"></div>
+            <div class="porsche-history-image"><img src="le-mans-24-hours-2017---toyota.jpg" alt="24 Hours of Le Mans" loading="lazy" decoding="async"></div>
             <div class="porsche-history-image-caption">24 Hours of Le Mans, 2017. The Circuit de la Sarthe in twilight.</div>
         </div>
         
@@ -3414,7 +3414,8 @@ function showPorscheHistory() {
     paragraphs.forEach(p => {
         p.classList.remove('visible');
         p.style.opacity = '0';
-        p.style.transform = 'translateY(10px)';
+        p.style.transform = 'translateY(20px)'; // Increased slide-up distance
+        p.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left (for mask reveal animation)
     });
     
     // Hide image placeholders initially
@@ -3449,7 +3450,8 @@ function showPorscheHistory() {
     headings.forEach(h => {
         h.classList.remove('visible');
         h.style.opacity = '0';
-        h.style.transform = 'translateY(10px)';
+        h.style.transform = 'translateY(20px)'; // Increased slide-up distance
+        h.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left (for mask reveal animation)
     });
     
     // Hide UI elements when popup opens (same as part menu)
@@ -3555,6 +3557,11 @@ function initPorscheHistoryScrollReveal() {
     const container = document.getElementById('porsche-history-container');
     
     function updateScrollbar() {
+        // Only update if history window is visible
+        if (!porscheHistoryVisible) {
+            if (scrollbar) scrollbar.style.display = 'none';
+            return;
+        }
         if (!scrollbar || !scrollbarThumb || !container || !content) return;
         
         const scrollHeight = content.scrollHeight;
@@ -3589,6 +3596,25 @@ function initPorscheHistoryScrollReveal() {
     
     // Update scrollbar on scroll
     content.addEventListener('scroll', updateScrollbar);
+    
+    // Track scroll to update header styling (scaled title and background opacity)
+    const header = document.getElementById('porsche-history-header');
+    if (header) {
+        const handleScroll = () => {
+            // Only process if history window is visible
+            if (!porscheHistoryVisible) return;
+            
+            const scrollTop = content.scrollTop;
+            if (scrollTop > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        };
+        content.addEventListener('scroll', handleScroll);
+        // Initial check
+        handleScroll();
+    }
     
     // Make scrollbar draggable
     let isDragging = false;
@@ -3654,6 +3680,9 @@ function initPorscheHistoryScrollReveal() {
     
     // Function to reveal elements on scroll with opacity fade
     function revealOnScroll() {
+        // Only process if history window is visible
+        if (!porscheHistoryVisible) return;
+        
         allElements.forEach((el, index) => {
             if (revealedElements.has(el)) return; // Already revealed
             
@@ -3726,6 +3755,31 @@ function initPorscheHistoryScrollReveal() {
                                 caption.style.clipPath = 'inset(0 0% 0 0)';
                             }, 800);
                         }
+                    }
+                }
+                // Special handling for paragraphs and headings - mask reveal from left to right with smooth slide-up
+                else if (el.tagName === 'P' || el.tagName === 'H3') {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(20px)'; // Increased slide-up distance for more noticeable effect
+                    el.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
+                    el.classList.add('visible');
+                    
+                    const gsap = window.gsap || window.GSAP;
+                    if (gsap) {
+                        gsap.to(el, {
+                            opacity: 1,
+                            y: 0,
+                            clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                            duration: 1.0, // Extended to 1 second total
+                            ease: 'power2.out' // Smoother ease-out
+                        });
+                    } else {
+                        // Fallback CSS transition
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'translateY(0)';
+                            el.style.clipPath = 'inset(0 0% 0 0)';
+                        }, 50);
                     }
                 } else if (el.classList.contains('porsche-history-image-caption')) {
                     // Captions are handled by their preceding image
@@ -4048,6 +4102,12 @@ function hidePorscheHistory() {
         content.scrollTop = 0;
     }
     
+    // Remove scrolled class from header
+    const header = document.getElementById('porsche-history-header');
+    if (header) {
+        header.classList.remove('scrolled');
+    }
+    
     // Remove all visible classes from paragraphs, headings, image placeholders, images, captions, and done button
     if (content) {
         const allElements = content.querySelectorAll('p, h3, .porsche-history-image-placeholder, .porsche-history-image, .porsche-history-image-caption, .porsche-history-done-button, .porsche-history-buy-button');
@@ -4058,16 +4118,18 @@ function hidePorscheHistory() {
         });
     }
     
-    // GSAP animation: hard mask hide upward (exact same as part menu - using y property, not transform)
-    gsap.to(container, {
-        clipPath: 'inset(0% 0% 100% 0%)', // Hide by masking from bottom (reveal from top, 100% hidden at bottom)
-        y: 0, // Keep at final position while hiding (same as part menu)
-        duration: 0.4,
+    // Simplified fast fade-out animation for smoother, faster closing
+    gsap.to([overlay, container], {
+        opacity: 0,
+        duration: 0.2, // Fast fade out
         ease: 'power2.in',
         onComplete: () => {
             overlay.classList.remove('visible');
             porscheHistoryVisible = false;
             document.body.classList.remove('menu-open');
+            
+            // Reset opacity for next open
+            gsap.set([overlay, container], { opacity: 1 });
             
             // Fade in UI elements (same as part menu) - including book button
             const partContainerEl = document.getElementById('part-container');
