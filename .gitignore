@@ -1,3 +1,6 @@
 node_modules/
 782-hdri-skies-com.zip
 782-hdri-skies-com/
+node_modules/
+*.bak
+package-lock.json
