@@ -3340,7 +3340,7 @@ function showPorscheHistory() {
         
         <div class="porsche-history-image-wrapper">
             <div class="porsche-history-image"><img src="930turbo1.jpg" alt="Porsche 930 Turbo" loading="lazy" decoding="async"></div>
-            <div class="porsche-history-image-caption">Porsche 930 Turbo. The legendary "Widowmaker" in motion.</div>
+            <div class="porsche-history-image-caption">Porsche 930 Turbo. The legendary "Widowmaker" at rest—white against summer fields.</div>
         </div>
         
         <p>When electric cars began to take over in the 2020s, Porsche faced a crisis of identity. Many wondered: <strong>Could a silent Porsche still feel like a Porsche?</strong></p>
@@ -3525,6 +3525,25 @@ function showPorscheHistory() {
     
     porscheHistoryVisible = true;
     document.body.classList.add('menu-open');
+    
+    // Add wheel event listener to window to enable scrolling anywhere on screen
+    const handleWheel = (e) => {
+        if (!porscheHistoryVisible || !content) return;
+        
+        // Forward wheel events to the content area
+        e.preventDefault();
+        e.stopPropagation();
+        content.scrollTop += e.deltaY;
+        
+        // Trigger scroll event to update scrollbar and scroll reveal
+        content.dispatchEvent(new Event('scroll'));
+    };
+    
+    // Attach to window instead of overlay to catch all scroll events
+    window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    
+    // Store handler for cleanup
+    window._porscheHistoryWheelHandler = handleWheel;
     
     // Close button handler
     if (closeBtn) {
@@ -4168,6 +4187,12 @@ function hidePorscheHistory() {
         ease: 'power2.in',
         onComplete: () => {
             overlay.classList.remove('visible');
+            // Remove wheel event listener
+            if (window._porscheHistoryWheelHandler) {
+                window.removeEventListener('wheel', window._porscheHistoryWheelHandler, { capture: true });
+                delete window._porscheHistoryWheelHandler;
+            }
+            
             porscheHistoryVisible = false;
             document.body.classList.remove('menu-open');
             
