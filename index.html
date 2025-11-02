@@ -6,7 +6,7 @@
     <title>Porsche 911 Interactive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
     <style>
         * {
@@ -548,7 +548,7 @@
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(4px); /* Increased from 2px for stronger blur effect */
             pointer-events: all;
         }
         #porsche-history-container {
@@ -634,8 +634,8 @@
             color: #ffd700;
             font-family: 'DM Mono', monospace; /* Space Mono Regular */
             font-size: 22px; /* 22pt body text */
-            font-weight: 400; /* Regular weight */
-            line-height: 1.9; /* Better line spacing for magazine */
+            font-weight: 300; /* Light weight */
+            line-height: 1.5;
             overflow-y: scroll; /* Enable scrolling */
             overflow-x: visible; /* Allow full-width images to bleed beyond padding */
             padding-left: 0; /* No padding here - container handles left padding */
@@ -699,9 +699,9 @@
             font-style: italic;
             font-size: 20px; /* Slightly larger for emphasis */
         }
-        #porsche-history-content strong {
-            font-weight: bold;
-            color: #ffe866; /* 25% brighter than #ffd700 */
+        #porsche-history-content p strong {
+            font-weight: 300; /* Same lighter weight as body text */
+            color: #ffe866; /* 25% brighter than #ffd700 - keeps emphasis through color */
         }
         .porsche-history-done-button {
             margin-top: 0; /* No margin - container handles spacing, matches buy button */
@@ -732,11 +732,78 @@
             border-color: #ffd700 !important;
             transform: translateX(8px) translateY(0); /* Match part menu option hover transform */
         }
+        .porsche-history-stock-chart {
+            margin-top: 0; /* No margin - spacing handled by separator margin-bottom */
+            margin-bottom: 0; /* No margin - buttons directly below */
+            width: 100%;
+            background: transparent; /* Remove dark background - use main container background */
+            border: none; /* Remove yellow border */
+            padding: 20px 0; /* Keep vertical padding, remove horizontal to stretch */
+            position: relative;
+        }
+        .porsche-history-stock-chart-separator {
+            width: 100%;
+            height: 1px;
+            background: #ffd700; /* Full opacity default yellow */
+            margin-top: 0; /* No margin - spacing handled by paragraph margin-bottom */
+            margin-bottom: 12px; /* Closer spacing to chart title */
+        }
+        .porsche-history-stock-chart-title {
+            color: #ffd700;
+            font-family: 'DM Mono', monospace;
+            font-size: 17px; /* Increased from 14px */
+            font-weight: 400;
+            margin-bottom: 16px;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .porsche-history-stock-chart-title.visible {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .porsche-history-stock-chart canvas {
+            width: 100%;
+            aspect-ratio: 16 / 9; /* 16:9 aspect ratio */
+            display: block;
+            opacity: 0;
+            transform: translateY(10px);
+            image-rendering: crisp-edges;
+        }
+        .porsche-history-stock-chart canvas.visible {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
+        }
+        .porsche-history-stock-chart-legend {
+            display: flex;
+            gap: 32px;
+            margin-top: 16px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            color: rgba(255, 215, 0, 0.8);
+            opacity: 1; /* Always visible - no fade in needed */
+            transform: translateY(0);
+        }
+        .porsche-history-stock-chart-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .porsche-history-stock-chart-legend-line {
+            width: 40px;
+            height: 2px;
+            background: #00ff88; /* Green solid line for Porsche */
+        }
+        .porsche-history-stock-chart-legend-line.sp500 {
+            background: transparent;
+            border-top: 2px dashed rgba(255, 215, 0, 0.5); /* Dashed yellow line for S&P 500 */
+        }
         .porsche-history-buttons {
             display: flex;
             flex-direction: row;
             gap: 12px; /* Split in the middle between buttons */
-            margin-top: 32px;
+            margin-top: 62px; /* Standard spacing from chart above (matches standard distance) */
             width: 100%; /* Stretch to fill window width */
         }
         .porsche-history-buy-button {
@@ -1036,7 +1103,7 @@
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(4px); /* Increased to match other popups */
             pointer-events: all;
         }
         #out-of-funds-container {
@@ -1115,7 +1182,7 @@
             position: absolute;
             inset: 0;
             background: rgba(0, 0, 0, 0.1); /* Much lighter - almost no darkening */
-            backdrop-filter: blur(2px); /* Less blur too */
+            backdrop-filter: blur(4px); /* Increased to match wiki window */
             pointer-events: all; /* Allow clicks through backdrop */
         }
         #part-menu-container {
