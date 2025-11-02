@@ -3350,6 +3350,15 @@ function showPorscheHistory() {
         return;
     }
     
+    // Hide scrollbar immediately when opening to prevent it from appearing before content loads
+    const scrollbar = document.getElementById('porsche-history-scrollbar');
+    if (scrollbar) {
+        scrollbar.style.display = 'none';
+    }
+    
+    // Reset container ready flag
+    porscheHistoryContainerReady = false;
+    
     console.log('Showing Porsche history popup');
     
     // Set the content with formatted HTML
@@ -3583,6 +3592,8 @@ function showPorscheHistory() {
             container.style.transform = `translate(calc(-50% + ${porscheHistoryMouseFollow.x}px), calc(-50% + ${gsapY + porscheHistoryMouseFollow.y}px))`;
         },
         onComplete: () => {
+            // Mark container as ready
+            porscheHistoryContainerReady = true;
             // Start scroll reveal effect after container reveals
             initPorscheHistoryScrollReveal();
         }
@@ -3628,6 +3639,7 @@ function showPorscheHistory() {
 // Soft opacity reveal effect on scroll for Porsche history
 let porscheHistoryScrollRevealActive = false;
 let porscheHistoryScrollRevealElements = null; // Track revealed elements
+let porscheHistoryContainerReady = false; // Flag to track when container animation has completed
 function initPorscheHistoryScrollReveal() {
     // Reset on each new open - clear previous state
     porscheHistoryScrollRevealElements = null;
@@ -3652,6 +3664,12 @@ function initPorscheHistoryScrollReveal() {
             return;
         }
         if (!scrollbar || !scrollbarThumb || !container || !content) return;
+        
+        // Don't show scrollbar until container animation has completed
+        if (!porscheHistoryContainerReady) {
+            if (scrollbar) scrollbar.style.display = 'none';
+            return;
+        }
         
         const scrollHeight = content.scrollHeight;
         const clientHeight = content.clientHeight;
@@ -3781,10 +3799,10 @@ function initPorscheHistoryScrollReveal() {
         content.scrollTop = newScrollTop;
     });
     
-    // Initial update
+    // Initial update - wait longer to ensure content is fully loaded and rendered
     setTimeout(() => {
         updateScrollbar();
-    }, 100);
+    }, 300);
     
     porscheHistoryScrollRevealActive = true;
     const paragraphs = Array.from(content.querySelectorAll('p'));
