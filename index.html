@@ -823,7 +823,8 @@
             opacity: 1; /* Visible initially */
         }
         /* Image should start above placeholder */
-        .porsche-history-image img {
+        .porsche-history-image img,
+        .porsche-history-image video {
             position: relative;
             z-index: 2; /* Above placeholder */
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
@@ -861,12 +862,15 @@
             clip-path: inset(0 0% 0 0); /* End: fully revealed */
             transition: opacity 0.6s cubic-bezier(0.85, 0, 0.15, 1), transform 0.6s cubic-bezier(0.85, 0, 0.15, 1), clip-path 0.8s cubic-bezier(0.85, 0, 0.15, 1); /* Sharp quant ease */
         }
-        .porsche-history-image img {
+        .porsche-history-image img,
+        .porsche-history-image video {
             width: 100%;
             height: 100%;
             object-fit: cover; /* Crop to fit the box */
             display: block;
             max-width: 1200px; /* Reasonable max width - images are displayed at 80% of text width anyway (~720px max) */
+        }
+        .porsche-history-image img {
             animation: imageFlicker 0.05s linear infinite alternate; /* Fast flicker between 1.0 and 0.98 opacity */
         }
         @keyframes imageFlicker {
@@ -881,6 +885,10 @@
         #porsche-history-overlay:not(.visible) .porsche-history-image img {
             animation-play-state: paused;
         }
+        /* Pause video playback when overlay is hidden */
+        #porsche-history-overlay:not(.visible) .porsche-history-image video {
+            animation-play-state: paused;
+        }
         #porsche-history-overlay:not(.visible) .porsche-history-image::before {
             animation-play-state: paused;
         }
@@ -890,7 +898,7 @@
             margin-left: 0; /* Align with image left edge - same container */
             width: 100%; /* Full width of wrapper, same as image */
             font-family: 'DM Mono', monospace; /* Space Mono Regular */
-            font-size: 12px; /* Smaller size for captions */
+            font-size: 14px; /* Same size as full-width image caption */
             font-weight: 400; /* Regular weight */
             color: rgba(255, 215, 0, 0.7);
             text-align: left; /* Left align to match image */
@@ -938,7 +946,8 @@
             opacity: 1; /* Visible initially */
         }
         /* Full-width image should start above placeholder */
-        .porsche-history-fullwidth-image img {
+        .porsche-history-fullwidth-image img,
+        .porsche-history-fullwidth-image video {
             position: relative;
             z-index: 2; /* Above placeholder */
             width: 100%;
@@ -950,12 +959,14 @@
             /* Center the image vertically - position top edge so center of image is at center of container */
             top: -25%; /* Move up by half of extra height (25% of container = half of 50% extra) to center */
             transform-origin: center center; /* Ensure transforms happen from center */
-            animation: imageFlicker 0.05s linear infinite alternate;
             will-change: transform, clip-path; /* Optimize for parallax animation and clip-path */
             /* Prevent edge artifacts during parallax */
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left, so yellow shows through */
+        }
+        .porsche-history-fullwidth-image img {
+            animation: imageFlicker 0.05s linear infinite alternate;
         }
         /* Caption overlay on full-width parallax image */
         .porsche-history-fullwidth-image-caption {
@@ -974,6 +985,10 @@
         }
         /* Pause full-width image animations when overlay is hidden */
         #porsche-history-overlay:not(.visible) .porsche-history-fullwidth-image img {
+            animation-play-state: paused;
+        }
+        /* Pause video playback when overlay is hidden */
+        #porsche-history-overlay:not(.visible) .porsche-history-fullwidth-image video {
             animation-play-state: paused;
         }
         /* Interlace effect overlay on full-width images */

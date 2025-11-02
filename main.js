@@ -3360,14 +3360,14 @@ function showPorscheHistory() {
         
         <p>The cars weren't just machines. <strong>They were extensions of identity.</strong></p>
         
+        <div class="porsche-history-fullwidth-image">
+            <video src="ferdinand-animated.MP4" autoplay loop muted playsinline></video>
+            <div class="porsche-history-fullwidth-image-caption">Ferdinand Porsche (1875–1951) — engineer, innovator, and founder of Porsche.</div>
+        </div>
+        
         <h3>The Age of the Driver (1930–2030)</h3>
         
         <p>Founded in 1931 by <strong>Ferdinand Porsche</strong>, the brand emerged from the same industrial fire that defined Europe between wars. The company's first masterpiece — the <strong>Volkswagen Beetle</strong> — wasn't even a Porsche model, but it established the lineage: simplicity, efficiency, and form following function.</p>
-        
-        <div class="porsche-history-fullwidth-image">
-            <img src="1IL23tfaB4r5nFd36zrXy9q1FqISWflENCzz1zp8.png" alt="Porsche 911" loading="lazy" decoding="async">
-            <div class="porsche-history-fullwidth-image-caption">Ferdinand Porsche (1875–1951) — engineer, innovator, and founder of Porsche.</div>
-        </div>
         
         <p>After World War II, Ferdinand's son <strong>Ferry Porsche</strong> decided to build something personal — a car for people who loved to drive, not just to move. The result was the <strong>Porsche 356 (1948)</strong>, a small, curved body of aluminum and spirit. It was light, quick, and soulful — and it marked the beginning of the Porsche legacy.</p>
         
@@ -3376,8 +3376,8 @@ function showPorscheHistory() {
         <p>The <strong>911</strong> was an anomaly: rear-engine, perfectly imperfect, but alive in the hands of those who understood it. Over the next century, it became one of humanity's longest-running design languages — a silhouette instantly recognizable even from orbiting colonies.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="a1-scaled.jpg" alt="Porsche 911" loading="lazy" decoding="async"></div>
-            <div class="porsche-history-image-caption">Porsche 911. The iconic silhouette under warm studio lighting.</div>
+            <div class="porsche-history-image"><img src="p964.jpg" alt="Porsche 964" loading="lazy" decoding="async"></div>
+            <div class="porsche-history-image-caption">Porsche 964</div>
         </div>
         
         <h3>Mechanical Religion</h3>
@@ -3387,8 +3387,8 @@ function showPorscheHistory() {
         <p>The <strong>911</strong> wasn't just a car; <strong>it was a ritual</strong> — a blend of engineering discipline and emotional release. Enthusiasts spoke of steering feedback, gear ratios, and throttle response with the reverence of monks describing sacred texts.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="930turbo1.jpg" alt="Porsche 930 Turbo" loading="lazy" decoding="async"></div>
-            <div class="porsche-history-image-caption">Porsche 930 Turbo. The legendary "Widowmaker" at rest—white against summer fields.</div>
+            <div class="porsche-history-image"><img src="p930.jpg" alt="Porsche 930 Turbo" loading="lazy" decoding="async"></div>
+            <div class="porsche-history-image-caption">Porsche 930 Turbo</div>
         </div>
         
         <p>When electric cars began to take over in the 2020s, Porsche faced a crisis of identity. Many wondered: <strong>Could a silent Porsche still feel like a Porsche?</strong></p>
@@ -3402,8 +3402,8 @@ function showPorscheHistory() {
         <p>The brand's design philosophy — clean, minimal, and purpose-driven — influenced not only car aesthetics but also architecture, industrial design, and digital interfaces. The timeless <strong>911 silhouette</strong> inspired furniture, fashion, and even the casings of AI robots in the 2060s.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="2015-porsche-918-spyder-weissach-package.jpeg" alt="Porsche 918 Spyder" loading="lazy" decoding="async"></div>
-            <div class="porsche-history-image-caption">Porsche 918 Spyder Weissach Package. Deep metallic tones showcasing hybrid performance.</div>
+            <div class="porsche-history-image"><img src="p918.jpg" alt="Porsche 918 Spyder" loading="lazy" decoding="async"></div>
+            <div class="porsche-history-image-caption">Porsche 918 Spyder</div>
         </div>
         
         <p>Collectors treated early <strong>911s</strong>, <strong>918 Spyders</strong>, and <strong>992-series Taycans</strong> as sacred artifacts, preserving them in climate-controlled capsules long after gasoline was banned on most continents.</p>
@@ -3413,8 +3413,8 @@ function showPorscheHistory() {
         <p>Few brands blurred the line between the road and the racetrack like Porsche. Throughout the 20th and 21st centuries, it dominated endurance racing, especially the <strong>24 Hours of Le Mans</strong>, where it holds the record for most victories.</p>
         
         <div class="porsche-history-image-wrapper">
-            <div class="porsche-history-image"><img src="le-mans-24-hours-2017---toyota.jpg" alt="24 Hours of Le Mans" loading="lazy" decoding="async"></div>
-            <div class="porsche-history-image-caption">24 Hours of Le Mans, 2017. The Circuit de la Sarthe in twilight.</div>
+            <div class="porsche-history-image"><img src="plemans.jpg" alt="24 Hours of Le Mans" loading="lazy" decoding="async"></div>
+            <div class="porsche-history-image-caption">24 Hours of Le Mans</div>
         </div>
         
         <p>In retrospect, those races were more than sport — they were engineering experiments in motion. Porsche's philosophy of <strong>"durability through precision"</strong> later influenced the mechanical design of early lunar rovers and orbital vehicles.</p>
@@ -3422,6 +3422,11 @@ function showPorscheHistory() {
         <h3>Post-Human Design (2030–2077)</h3>
         
         <p>As human driving faded from daily life, Porsche reinvented itself. By the 2040s, its vehicles had become <strong>augmented emotional machines</strong> — systems that combined human input with adaptive intelligence, tuned to mirror their driver's psychological state.</p>
+        
+        <div class="porsche-history-image-wrapper">
+            <div class="porsche-history-image"><video src="pfuture-video.MP4" autoplay loop muted playsinline></video></div>
+            <div class="porsche-history-image-caption">Porsche 9000</div>
+        </div>
         
         <p>Even as control shifted from hands to algorithms, Porsche remained faithful to one principle: <strong>a machine can still be felt.</strong></p>
         
@@ -3687,36 +3692,36 @@ function initPorscheHistoryScrollReveal() {
         if (!porscheHistoryVisible) return;
         
         const scrollTop = content.scrollTop;
-        const fullWidthImages = content.querySelectorAll('.porsche-history-fullwidth-image img');
+        const fullWidthMedia = content.querySelectorAll('.porsche-history-fullwidth-image img, .porsche-history-fullwidth-image video');
         
-        fullWidthImages.forEach((img) => {
-            const imageContainer = img.parentElement;
-            if (!imageContainer) return;
+        fullWidthMedia.forEach((media) => {
+            const mediaContainer = media.parentElement;
+            if (!mediaContainer) return;
             
-            const containerRect = imageContainer.getBoundingClientRect();
+            const containerRect = mediaContainer.getBoundingClientRect();
             const contentRect = content.getBoundingClientRect();
             
-            // Calculate if image is in viewport
-            const imageTop = containerRect.top - contentRect.top + scrollTop;
-            const imageBottom = imageTop + containerRect.height;
+            // Calculate if media is in viewport
+            const mediaTop = containerRect.top - contentRect.top + scrollTop;
+            const mediaBottom = mediaTop + containerRect.height;
             
-            // Only apply parallax while image is visible or just before/after
-            if (scrollTop >= imageTop - content.clientHeight && scrollTop <= imageBottom + content.clientHeight) {
-                // Check if image has completed reveal animation (clip-path is not masked)
+            // Only apply parallax while media is visible or just before/after
+            if (scrollTop >= mediaTop - content.clientHeight && scrollTop <= mediaBottom + content.clientHeight) {
+                // Check if media has completed reveal animation (clip-path is not masked)
                 // Use a more lenient check - if clip-path contains "100%" it's still masked
-                const clipPath = window.getComputedStyle(img).clipPath || '';
+                const clipPath = window.getComputedStyle(media).clipPath || '';
                 const isStillMasked = clipPath.includes('100%');
                 
-                // Only apply parallax if image is revealed (not masked)
+                // Only apply parallax if media is revealed (not masked)
                 if (isStillMasked) return;
                 
-                // Calculate parallax offset - image scrolls slower than content (0.3 = 30% speed)
+                // Calculate parallax offset - media scrolls slower than content (0.3 = 30% speed)
                 const parallaxSpeed = 0.3;
-                const scrollDelta = scrollTop - imageTop;
-                const imageOffset = scrollDelta * parallaxSpeed;
+                const scrollDelta = scrollTop - mediaTop;
+                const mediaOffset = scrollDelta * parallaxSpeed;
                 
-                // Apply transform to image (moves slower than scroll)
-                img.style.transform = `translateY(${imageOffset}px)`;
+                // Apply transform to media (moves slower than scroll)
+                media.style.transform = `translateY(${mediaOffset}px)`;
             }
         });
     };
@@ -3818,12 +3823,12 @@ function initPorscheHistoryScrollReveal() {
                         el.insertBefore(placeholderBlock, el.firstChild); // Insert at beginning so it's behind image
                     }
                     
-                    const img = el.querySelector('img');
+                    const media = el.querySelector('img') || el.querySelector('video');
                     el.style.opacity = '1'; // Container visible
                     el.style.transform = 'translateY(0)';
-                    // Don't clip the container - clip the image itself
-                    if (img) {
-                        img.style.clipPath = 'inset(0 100% 0 0)'; // Image starts masked, so yellow shows through
+                    // Don't clip the container - clip the media itself
+                    if (media) {
+                        media.style.clipPath = 'inset(0 100% 0 0)'; // Media starts masked, so yellow shows through
                     }
                     placeholderBlock.style.clipPath = 'inset(0 100% 0 0)'; // Placeholder starts masked
                     
@@ -3836,16 +3841,16 @@ function initPorscheHistoryScrollReveal() {
                             ease: 'expo.inOut' // Sharp quant ease - same as before
                         });
                         
-                        // Then: reveal image on top with same animation (same delay as big image)
+                        // Then: reveal media on top with same animation (same delay as big image)
                         setTimeout(() => {
                             el.classList.add('visible');
-                            if (img) {
-                                gsap.to(img, {
+                            if (media) {
+                                gsap.to(media, {
                                     clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
                                     duration: 0.8,
                                     ease: 'expo.inOut', // Same ease as big image
                                     onComplete: () => {
-                                        // Hide yellow block after image reveal completes
+                                        // Hide yellow block after media reveal completes
                                         gsap.to(placeholderBlock, {
                                             opacity: 0,
                                             duration: 0.3,
@@ -3861,9 +3866,9 @@ function initPorscheHistoryScrollReveal() {
                             placeholderBlock.style.clipPath = 'inset(0 0% 0 0)';
                             setTimeout(() => {
                                 el.classList.add('visible');
-                                if (img) {
-                                    img.style.clipPath = 'inset(0 0% 0 0)';
-                                    // Hide yellow block after image reveal completes in fallback
+                                if (media) {
+                                    media.style.clipPath = 'inset(0 0% 0 0)';
+                                    // Hide yellow block after media reveal completes in fallback
                                     setTimeout(() => {
                                         placeholderBlock.style.opacity = '0';
                                     }, 800); // After animation completes
@@ -3910,10 +3915,10 @@ function initPorscheHistoryScrollReveal() {
                         }
                     }
                 }
-                // Special handling for full-width images - yellow placeholder first, then image reveal on top
+                // Special handling for full-width images - yellow placeholder first, then image/video reveal on top
                 else if (el.classList.contains('porsche-history-fullwidth-image')) {
-                    const img = el.querySelector('img');
-                    if (!img) return;
+                    const media = el.querySelector('img') || el.querySelector('video');
+                    if (!media) return;
                     
                     // Create or get yellow placeholder block
                     let placeholderBlock = el.querySelector('.porsche-history-fullwidth-image-placeholder-block');
@@ -3926,11 +3931,11 @@ function initPorscheHistoryScrollReveal() {
                     // Get caption
                     const caption = el.querySelector('.porsche-history-fullwidth-image-caption');
                     
-                    img.style.opacity = '1'; // Image visible
-                    img.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left, so yellow shows through
+                    media.style.opacity = '1'; // Media visible
+                    media.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left, so yellow shows through
                     placeholderBlock.style.clipPath = 'inset(0 100% 0 0)'; // Placeholder starts masked
                     
-                    // Hide caption initially - will reveal after image loads
+                    // Hide caption initially - will reveal after media loads
                     if (caption) {
                         revealedElements.add(caption); // Mark as will be revealed
                         caption.style.opacity = '0';
@@ -3940,8 +3945,8 @@ function initPorscheHistoryScrollReveal() {
                     
                     const gsap = window.gsap || window.GSAP;
                     
-                    // Check if image is already loaded
-                    const checkImageLoadAndReveal = () => {
+                    // Check if media is already loaded (works for both img and video)
+                    const checkMediaLoadAndReveal = () => {
                         if (gsap) {
                             // First: reveal yellow placeholder block
                             gsap.to(placeholderBlock, {
@@ -3950,33 +3955,44 @@ function initPorscheHistoryScrollReveal() {
                                 ease: 'expo.inOut' // Sharp quant ease - same as before
                             });
                             
-                            // Then: reveal image on top with same animation (small delay)
+                            // Then: reveal media on top with same animation (small delay)
                             setTimeout(() => {
-                                gsap.to(img, {
+                                gsap.to(media, {
                                     clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
                                     duration: 0.8,
                                     ease: 'expo.inOut', // Sharp quant ease - same as before
                                     onComplete: () => {
-                                        // Hide yellow block after image reveal completes
+                                        // Hide yellow block after media reveal completes
                                         gsap.to(placeholderBlock, {
                                             opacity: 0,
                                             duration: 0.3,
                                             ease: 'power2.out'
                                         });
                                         
-                                        // Wait for image to be fully loaded before revealing caption
-                                        if (img.complete && img.naturalHeight !== 0) {
-                                            // Image already loaded, reveal caption immediately
-                                            revealFullWidthCaption(caption, gsap);
-                                        } else {
-                                            // Wait for image to load
-                                            img.addEventListener('load', () => {
+                                        // For images: wait for load; for videos: check readyState
+                                        if (media.tagName === 'IMG') {
+                                            if (media.complete && media.naturalHeight !== 0) {
                                                 revealFullWidthCaption(caption, gsap);
-                                            }, { once: true });
-                                            // Also handle error case
-                                            img.addEventListener('error', () => {
+                                            } else {
+                                                media.addEventListener('load', () => {
+                                                    revealFullWidthCaption(caption, gsap);
+                                                }, { once: true });
+                                                media.addEventListener('error', () => {
+                                                    revealFullWidthCaption(caption, gsap);
+                                                }, { once: true });
+                                            }
+                                        } else if (media.tagName === 'VIDEO') {
+                                            // For video, check if enough data is loaded
+                                            if (media.readyState >= 2) { // HAVE_CURRENT_DATA or higher
                                                 revealFullWidthCaption(caption, gsap);
-                                            }, { once: true });
+                                            } else {
+                                                media.addEventListener('loadeddata', () => {
+                                                    revealFullWidthCaption(caption, gsap);
+                                                }, { once: true });
+                                                media.addEventListener('error', () => {
+                                                    revealFullWidthCaption(caption, gsap);
+                                                }, { once: true });
+                                            }
                                         }
                                     }
                                 });
@@ -3986,13 +4002,21 @@ function initPorscheHistoryScrollReveal() {
                             setTimeout(() => {
                                 placeholderBlock.style.clipPath = 'inset(0 0% 0 0)';
                                 setTimeout(() => {
-                                    img.style.clipPath = 'inset(0 0% 0 0)';
-                                    if (img.complete && img.naturalHeight !== 0) {
+                                    media.style.clipPath = 'inset(0 0% 0 0)';
+                                    if (media.tagName === 'IMG' && media.complete && media.naturalHeight !== 0) {
+                                        revealFullWidthCaption(caption, null);
+                                    } else if (media.tagName === 'VIDEO' && media.readyState >= 2) {
                                         revealFullWidthCaption(caption, null);
                                     } else {
-                                        img.addEventListener('load', () => {
-                                            revealFullWidthCaption(caption, null);
-                                        }, { once: true });
+                                        if (media.tagName === 'IMG') {
+                                            media.addEventListener('load', () => {
+                                                revealFullWidthCaption(caption, null);
+                                            }, { once: true });
+                                        } else if (media.tagName === 'VIDEO') {
+                                            media.addEventListener('loadeddata', () => {
+                                                revealFullWidthCaption(caption, null);
+                                            }, { once: true });
+                                        }
                                     }
                                 }, 200);
                             }, 50);
@@ -4022,8 +4046,8 @@ function initPorscheHistoryScrollReveal() {
                         }
                     };
                     
-                    // Start the reveal animation
-                    checkImageLoadAndReveal();
+                    // Start the reveal animation                    
+                    checkMediaLoadAndReveal();
                 }
                 // Special handling for paragraphs and headings - mask reveal from left to right with smooth slide-up
                 else if (el.tagName === 'P' || el.tagName === 'H3') {
