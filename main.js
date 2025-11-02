@@ -1335,7 +1335,7 @@ function initializeInfoToggle() {
 // UI hover hard-blink (match tooltip blink)
 const uiHoverBlinkTargets = [];
 function initializeUIHoverBlink() {
-    const buttonIds = ['music-player', 'rotate-button', 'info-button', 'fullscreen-button'];
+    const buttonIds = ['music-player', 'rotate-button', 'info-button', 'fullscreen-button', 'book-button'];
     buttonIds.forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -1352,6 +1352,30 @@ function initializeUIHoverBlink() {
             el.style.opacity = ''; // reset inline override
         });
     });
+}
+
+// Initialize book button for Porsche history
+function initializeBookButton() {
+    const bookButton = document.getElementById('book-button');
+    const bookIcon = document.getElementById('book-icon');
+    if (!bookButton || !bookIcon) {
+        console.warn('Book button elements not found');
+        return;
+    }
+    
+    // Feather book icon
+    bookIcon.innerHTML = '<i data-feather="book"></i>';
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    bookButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('Book button clicked!');
+        showPorscheHistory();
+    });
+    
+    console.log('Book button initialized');
 }
 
 function initializeRotateToggle() {
@@ -1408,6 +1432,179 @@ function onMouseMove(event) {
     if (tooltip) {
         tooltip.style.left = `${event.clientX}px`;
         tooltip.style.top = `${event.clientY}px`;
+    }
+    
+    // If out of funds popup is open, disable hover effects (allow car rotation but no hover)
+    if (outOfFundsVisible) {
+        // Clear any existing hover states
+        if (hoveredMesh && hoveredMesh !== clickedMesh) {
+            // Restore original material (don't clear clickedMesh)
+            if (hoveredMesh.userData.originalMaterial) {
+                if (hoveredMesh.material) {
+                    hoveredMesh.material.dispose();
+                }
+                hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
+                hoveredMesh.userData.originalMaterial = null;
+            }
+            
+            // Remove bounding box
+            if (boundingBoxHelper && boundingBoxHelper.parent) {
+                boundingBoxHelper.parent.remove(boundingBoxHelper);
+                boundingBoxHelper = null;
+            }
+            
+            // Remove corner indicators
+            cornerIndicators.forEach(indicator => {
+                if (indicator.parent) {
+                    indicator.parent.remove(indicator);
+                }
+            });
+            cornerIndicators = [];
+            
+            // Remove labels
+            if (cornerLabels.length && labelsLayerEl) {
+                cornerLabels.forEach(({ el }) => {
+                    if (el && el.parentNode) {
+                        labelsLayerEl.removeChild(el);
+                    }
+                });
+            }
+            cornerLabels = [];
+            
+            // Remove hover light
+            if (hoverPointLight) {
+                scene.remove(hoverPointLight);
+                hoverPointLight.dispose?.();
+                hoverPointLight = null;
+                hoverLightOwner = null;
+            }
+            
+            // Hide tooltip
+            if (tooltip) {
+                tooltip.classList.remove('visible');
+            }
+            
+            // Reset cursor
+            const crossEl = document.getElementById('cursor-cross');
+            if (crossEl) {
+                crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+            }
+            
+            hoveredMesh = null;
+            hoverFadeProgress = 0;
+        }
+        return; // Don't process hover when out of funds popup is open (but car can still rotate)
+    }
+    
+    // If Porsche history article is open, track mouse for history window follow effect
+    if (porscheHistoryVisible) {
+        // Keep cursor yellow when history is open
+        const crossEl = document.getElementById('cursor-cross');
+        if (crossEl) {
+            crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+        }
+        
+        const container = document.getElementById('porsche-history-container');
+        if (container) {
+            // Calculate subtle offset based on mouse position relative to screen center
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const mouseX = event.clientX;
+            const mouseY = event.clientY;
+            
+            // Calculate normalized offset (-1 to 1 range)
+            const normalizedX = (mouseX - centerX) / centerX;
+            const normalizedY = (mouseY - centerY) / centerY;
+            
+            // Apply subtle follow strength
+            porscheHistoryMouseFollow.targetX = normalizedX * MENU_MOUSE_FOLLOW_STRENGTH;
+            porscheHistoryMouseFollow.targetY = normalizedY * MENU_MOUSE_FOLLOW_STRENGTH;
+            
+            // Smoothly animate to target position using GSAP (kill previous animation if exists)
+            const gsap = window.gsap || window.GSAP;
+            if (gsap) {
+                if (porscheHistoryFollowAnimation) {
+                    porscheHistoryFollowAnimation.kill();
+                }
+                porscheHistoryFollowAnimation = gsap.to(porscheHistoryMouseFollow, {
+                    x: porscheHistoryMouseFollow.targetX,
+                    y: porscheHistoryMouseFollow.targetY,
+                    duration: 0.3,
+                    ease: 'power2.out',
+                    onUpdate: () => {
+                        // Apply transform offset to container (preserve GSAP y, add mouse follow)
+                        const gsapY = gsap.getProperty(container, 'y') || 0;
+                        container.style.transform = `translate(calc(-50% + ${porscheHistoryMouseFollow.x}px), calc(-50% + ${gsapY + porscheHistoryMouseFollow.y}px))`;
+                        
+                        // Update scrollbar position when container moves
+                        const scrollbar = document.getElementById('porsche-history-scrollbar');
+                        if (scrollbar && scrollbar.style.display !== 'none') {
+                            const containerRect = container.getBoundingClientRect();
+                            scrollbar.style.left = `${containerRect.right + 4}px`;
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Clear any existing hover states (but keep clicked mesh emissive)
+        if (hoveredMesh && hoveredMesh !== clickedMesh) {
+            // Restore original material (don't clear clickedMesh)
+            if (hoveredMesh.userData.originalMaterial) {
+                if (hoveredMesh.material) {
+                    hoveredMesh.material.dispose();
+                }
+                hoveredMesh.material = hoveredMesh.userData.originalMaterial.clone();
+                hoveredMesh.userData.originalMaterial = null;
+            }
+            
+            // Remove bounding box
+            if (boundingBoxHelper && boundingBoxHelper.parent) {
+                boundingBoxHelper.parent.remove(boundingBoxHelper);
+                boundingBoxHelper = null;
+            }
+            
+            // Remove corner indicators
+            cornerIndicators.forEach(indicator => {
+                if (indicator.parent) {
+                    indicator.parent.remove(indicator);
+                }
+            });
+            cornerIndicators = [];
+            
+            // Remove labels
+            if (cornerLabels.length && labelsLayerEl) {
+                cornerLabels.forEach(({ el }) => {
+                    if (el && el.parentNode) {
+                        labelsLayerEl.removeChild(el);
+                    }
+                });
+            }
+            cornerLabels = [];
+            
+            // Remove hover light
+            if (hoverPointLight) {
+                scene.remove(hoverPointLight);
+                hoverPointLight.dispose?.();
+                hoverPointLight = null;
+                hoverLightOwner = null;
+            }
+            
+            // Hide tooltip
+            if (tooltip) {
+                tooltip.classList.remove('visible');
+            }
+            
+            // Reset cursor
+            const crossEl = document.getElementById('cursor-cross');
+            if (crossEl) {
+                crossEl.classList.remove('hovering', 'warning', 'good', 'neutral');
+            }
+            
+            hoveredMesh = null;
+            hoverFadeProgress = 0;
+        }
+        return; // Don't process hover when Porsche history is open (but car can still rotate)
     }
     
     // If menu is open, track mouse for menu follow effect
@@ -2283,6 +2480,10 @@ let menuVisible = false;
 let menuMouseFollow = { x: 0, y: 0, targetX: 0, targetY: 0 };
 let menuFollowAnimation = null; // Track ongoing animation
 const MENU_MOUSE_FOLLOW_STRENGTH = 15; // Pixels of movement per screen edge distance (subtle)
+
+// Porsche history mouse follow (same as part menu)
+let porscheHistoryMouseFollow = { x: 0, y: 0, targetX: 0, targetY: 0 };
+let porscheHistoryFollowAnimation = null; // Track ongoing animation
 let autoRotateStateBeforeMenu = true; // Store auto-rotate state before menu opens
 let clickedMeshOriginalMaterial = null; // Store original material of clicked mesh
 
@@ -2341,13 +2542,22 @@ function onMouseClick(event) {
     // Check if clicking on UI elements (don't trigger menu on UI clicks)
     const target = event.target;
     if (target.closest('#part-menu-overlay') || 
+        target.closest('#porsche-history-overlay') ||
+        target.closest('#out-of-funds-overlay') ||
         target.closest('#music-player') || 
         target.closest('#fullscreen-button') || 
         target.closest('#info-button') || 
-        target.closest('#rotate-button')) {
-        // If clicking backdrop, close menu
+        target.closest('#rotate-button') ||
+        target.closest('#book-button')) {
+        // If clicking backdrop, close menu/history/out of funds
         if (target.id === 'part-menu-backdrop') {
             hidePartMenu();
+        }
+        if (target.id === 'porsche-history-backdrop') {
+            hidePorscheHistory();
+        }
+        if (target.id === 'out-of-funds-backdrop') {
+            hideOutOfFundsPopup();
         }
         // Reset drag tracking
         mouseDownTime = 0;
@@ -2814,7 +3024,8 @@ function showPartMenu(mesh) {
         document.getElementById('music-player'),
         document.getElementById('fullscreen-button'),
         document.getElementById('rotate-button'),
-        document.getElementById('info-button')
+        document.getElementById('info-button'),
+        document.getElementById('book-button') // Include book button in hide/show
     ];
     
     // Disable CSS transitions temporarily for synchronized GSAP animations
@@ -2990,7 +3201,8 @@ function hidePartMenu() {
                             document.getElementById('music-player'),
                             document.getElementById('fullscreen-button'),
                             document.getElementById('rotate-button'),
-                            document.getElementById('info-button')
+                            document.getElementById('info-button'),
+                            document.getElementById('book-button') // Include book button
                         ];
                         
                         // Disable CSS transitions temporarily for synchronized GSAP animations
@@ -3025,7 +3237,8 @@ function hidePartMenu() {
                     document.getElementById('music-player'),
                     document.getElementById('fullscreen-button'),
                     document.getElementById('rotate-button'),
-                    document.getElementById('info-button')
+                    document.getElementById('info-button'),
+                    document.getElementById('book-button') // Include book button
                 ];
                 
                 // Disable CSS transitions temporarily for synchronized GSAP animations
@@ -3070,6 +3283,998 @@ function hidePartMenu() {
     // Fade out backdrop
     gsap.to(backdrop, { opacity: 0, duration: 0.3 });
 }
+
+// Porsche History popup state
+let porscheHistoryVisible = false;
+let outOfFundsVisible = false;
+
+// Porsche History popup functions
+function showPorscheHistory() {
+    const gsap = window.gsap || window.GSAP;
+    const overlay = document.getElementById('porsche-history-overlay');
+    const container = document.getElementById('porsche-history-container');
+    const content = document.getElementById('porsche-history-content');
+    const backdrop = document.getElementById('porsche-history-backdrop');
+    const closeBtn = document.getElementById('porsche-history-close');
+    
+    if (!overlay || !container || !content) {
+        console.warn('Porsche history elements not found', { overlay, container, content });
+        return;
+    }
+    
+    console.log('Showing Porsche history popup');
+    
+    // Set the content with formatted HTML
+    const historyText = `
+        <p><em>A Retrospective from 2077</em></p>
+        
+        <p>When we look back at the early 21st century, few automotive names carry the mythic weight that <strong>Porsche</strong> does. Long before vehicles became fully autonomous, connected, and post-combustion by default, Porsche represented something deeply human — the obsession with control, sensation, and sound.</p>
+        
+        <p>The cars weren't just machines. <strong>They were extensions of identity.</strong></p>
+        
+        <h3>The Age of the Driver (1930–2030)</h3>
+        
+        <p>Founded in 1931 by <strong>Ferdinand Porsche</strong>, the brand emerged from the same industrial fire that defined Europe between wars. The company's first masterpiece — the <strong>Volkswagen Beetle</strong> — wasn't even a Porsche model, but it established the lineage: simplicity, efficiency, and form following function.</p>
+        
+        <p>After World War II, Ferdinand's son <strong>Ferry Porsche</strong> decided to build something personal — a car for people who loved to drive, not just to move. The result was the <strong>Porsche 356 (1948)</strong>, a small, curved body of aluminum and spirit. It was light, quick, and soulful — and it marked the beginning of the Porsche legacy.</p>
+        
+        <p>But the myth didn't crystallize until 1964, when the <strong>Porsche 911</strong> appeared.</p>
+        
+        <p>The <strong>911</strong> was an anomaly: rear-engine, perfectly imperfect, but alive in the hands of those who understood it. Over the next century, it became one of humanity's longest-running design languages — a silhouette instantly recognizable even from orbiting colonies.</p>
+        
+        <div class="porsche-history-image-wrapper">
+            <div class="porsche-history-image"><img src="a1-scaled.jpg" alt="Porsche 911"></div>
+            <div class="porsche-history-image-caption">Porsche 911. The iconic silhouette under warm studio lighting.</div>
+        </div>
+        
+        <h3>Mechanical Religion</h3>
+        
+        <p>During the 20th and early 21st centuries, <strong>Porsche culture was almost spiritual.</strong> Owners gathered for early-morning drives through winding roads, chasing the sound of a flat-six engine echoing through forests or city tunnels.</p>
+        
+        <p>The <strong>911</strong> wasn't just a car; <strong>it was a ritual</strong> — a blend of engineering discipline and emotional release. Enthusiasts spoke of steering feedback, gear ratios, and throttle response with the reverence of monks describing sacred texts.</p>
+        
+        <div class="porsche-history-image-wrapper">
+            <div class="porsche-history-image"><img src="930turbo1.jpg" alt="Porsche 930 Turbo"></div>
+            <div class="porsche-history-image-caption">Porsche 930 Turbo. The legendary "Widowmaker" in motion.</div>
+        </div>
+        
+        <p>When electric cars began to take over in the 2020s, Porsche faced a crisis of identity. Many wondered: <strong>Could a silent Porsche still feel like a Porsche?</strong></p>
+        
+        <p>The answer arrived in 2019 with the <strong>Taycan</strong> — the company's first fully electric sports sedan. It was silent, but powerful; efficient, yet emotional. The Taycan's instant torque and precise steering reassured a generation that performance and sustainability could coexist. It became a transitional relic — the last breath of the combustion era meeting the first light of the electric age.</p>
+        
+        <h3>Cultural Symbolism</h3>
+        
+        <p>In the mid-century years, <strong>Porsche became shorthand for attainable perfection.</strong> Its slogan — <strong>"There is no substitute"</strong> — evolved into a cultural mantra representing mastery, focus, and emotional precision.</p>
+        
+        <p>The brand's design philosophy — clean, minimal, and purpose-driven — influenced not only car aesthetics but also architecture, industrial design, and digital interfaces. The timeless <strong>911 silhouette</strong> inspired furniture, fashion, and even the casings of AI robots in the 2060s.</p>
+        
+        <div class="porsche-history-image-wrapper">
+            <div class="porsche-history-image"><img src="2015-porsche-918-spyder-weissach-package.jpeg" alt="Porsche 918 Spyder"></div>
+            <div class="porsche-history-image-caption">Porsche 918 Spyder Weissach Package. Deep metallic tones showcasing hybrid performance.</div>
+        </div>
+        
+        <p>Collectors treated early <strong>911s</strong>, <strong>918 Spyders</strong>, and <strong>992-series Taycans</strong> as sacred artifacts, preserving them in climate-controlled capsules long after gasoline was banned on most continents.</p>
+        
+        <h3>Racing and Legacy</h3>
+        
+        <p>Few brands blurred the line between the road and the racetrack like Porsche. Throughout the 20th and 21st centuries, it dominated endurance racing, especially the <strong>24 Hours of Le Mans</strong>, where it holds the record for most victories.</p>
+        
+        <div class="porsche-history-image-wrapper">
+            <div class="porsche-history-image"><img src="le-mans-24-hours-2017---toyota.jpg" alt="24 Hours of Le Mans"></div>
+            <div class="porsche-history-image-caption">24 Hours of Le Mans, 2017. The Circuit de la Sarthe in twilight.</div>
+        </div>
+        
+        <p>In retrospect, those races were more than sport — they were engineering experiments in motion. Porsche's philosophy of <strong>"durability through precision"</strong> later influenced the mechanical design of early lunar rovers and orbital vehicles.</p>
+        
+        <h3>Post-Human Design (2030–2077)</h3>
+        
+        <p>As human driving faded from daily life, Porsche reinvented itself. By the 2040s, its vehicles had become <strong>augmented emotional machines</strong> — systems that combined human input with adaptive intelligence, tuned to mirror their driver's psychological state.</p>
+        
+        <p>Even as control shifted from hands to algorithms, Porsche remained faithful to one principle: <strong>a machine can still be felt.</strong></p>
+        
+        <p>The final analog <strong>911s</strong> built in 2045 were celebrated as <strong>"The Last True Porsches,"</strong> hand-assembled tributes to a disappearing era of raw connection.</p>
+        
+        <p>By the 2070s, Porsche's influence lived on not through cars, but through <strong>design language and philosophy</strong> — a foundation for modern mobility systems, from hovercrafts to interplanetary transports.</p>
+        
+        <h3>Conclusion — Why Porsche Still Matters</h3>
+        
+        <p><strong>Porsche was never just a car company.</strong> It was a mirror of humanity's relationship with motion. It taught us that speed wasn't about getting somewhere faster — <strong>it was about feeling alive while getting there.</strong></p>
+        
+        <p>Even in 2077, when roads are memories and vehicles glide silently across air, the shape of a <strong>911</strong> remains a reminder of what driving once meant: <strong>a dance between man, machine, and the horizon.</strong></p>
+        
+        <br>
+        
+        <div class="porsche-history-buttons">
+            <div class="porsche-history-done-button">I'M DONE READING</div>
+            <div class="porsche-history-buy-button">BUY ONE</div>
+        </div>
+    `;
+    
+    content.innerHTML = historyText;
+    
+    // Reset scroll position to top
+    content.scrollTop = 0;
+    
+    // Reset buttons if they exist
+    const doneButton = content.querySelector('.porsche-history-done-button');
+    const buyButton = content.querySelector('.porsche-history-buy-button');
+    if (doneButton) {
+        doneButton.classList.remove('visible');
+        doneButton.style.opacity = '0';
+        doneButton.style.transform = 'translateY(10px)';
+    }
+    if (buyButton) {
+        buyButton.classList.remove('visible');
+        buyButton.style.opacity = '0';
+        buyButton.style.transform = 'translateY(10px)';
+    }
+    
+    // Hide all paragraphs initially for scroll reveal
+    const paragraphs = content.querySelectorAll('p');
+    paragraphs.forEach(p => {
+        p.classList.remove('visible');
+        p.style.opacity = '0';
+        p.style.transform = 'translateY(10px)';
+    });
+    
+    // Hide image placeholders initially
+    const imagePlaceholders = content.querySelectorAll('.porsche-history-image-placeholder');
+    imagePlaceholders.forEach(img => {
+        img.classList.remove('visible');
+        img.style.opacity = '0';
+        img.style.transform = 'translateY(10px)';
+    });
+    
+    // Hide images initially
+    const images = content.querySelectorAll('.porsche-history-image');
+    images.forEach(img => {
+        img.classList.remove('visible');
+        img.style.opacity = '0';
+        img.style.transform = 'translateY(10px)';
+    });
+
+    // Hide image wrappers initially (for scroll reveal logic)
+    const imageWrappers = content.querySelectorAll('.porsche-history-image-wrapper');
+
+    // Hide image captions initially
+    const imageCaptions = content.querySelectorAll('.porsche-history-image-caption');
+    imageCaptions.forEach(caption => {
+        caption.classList.remove('visible');
+        caption.style.opacity = '0';
+        caption.style.transform = 'translateY(10px)';
+    });
+    
+    // Hide headings initially
+    const headings = content.querySelectorAll('h3');
+    headings.forEach(h => {
+        h.classList.remove('visible');
+        h.style.opacity = '0';
+        h.style.transform = 'translateY(10px)';
+    });
+    
+    // Hide UI elements when popup opens (same as part menu)
+    const partContainerEl = document.getElementById('part-container');
+    const uiButtons = [
+        document.getElementById('music-player'),
+        document.getElementById('fullscreen-button'),
+        document.getElementById('rotate-button'),
+        document.getElementById('info-button'),
+        document.getElementById('book-button')
+    ];
+    
+    const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+    allElements.forEach(el => {
+        el.style.transition = 'none';
+    });
+    
+    if (partContainerEl) {
+        gsap.to(partContainerEl, { opacity: 0, duration: 0.3, ease: 'power2.out', overwrite: true });
+    }
+    
+    uiButtons.forEach(btn => {
+        if (btn) {
+            gsap.to(btn, { opacity: 0, duration: 0.3, ease: 'power2.out', overwrite: true });
+        }
+    });
+    
+    // Hide Porsche logo (3D mesh) with same timing
+    if (uiCogMesh && uiCogMesh.material) {
+        gsap.to(uiCogMesh.material, { opacity: 0, duration: 0.3, ease: 'power2.out' });
+    }
+    
+    // Show overlay
+    overlay.classList.add('visible');
+    gsap.set(overlay, { opacity: 1 });
+    
+    // GSAP animation: fade in backdrop
+    gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    
+    // GSAP animation: hard mask reveal downward (same as part menu - using y property, not transform)
+    // Reset mouse follow before starting animation
+    porscheHistoryMouseFollow.x = 0;
+    porscheHistoryMouseFollow.y = 0;
+    porscheHistoryMouseFollow.targetX = 0;
+    porscheHistoryMouseFollow.targetY = 0;
+    
+    gsap.set(container, {
+        clipPath: 'inset(0% 0% 100% 0%)', // Start: fully masked (revealed from top, 100% hidden at bottom)
+        y: -50 // Start 50px above final position (same as part menu)
+    });
+    gsap.to(container, {
+        clipPath: 'inset(0% 0% 0% 0%)', // End: fully revealed
+        y: 0, // Ease into final position (50px downward movement, same as part menu)
+        duration: 0.25,
+        ease: 'circ.out',
+        onUpdate: () => {
+            // Apply transform with GSAP y during animation (preserve centering)
+            const gsapY = gsap.getProperty(container, 'y') || 0;
+            container.style.transform = `translate(calc(-50% + ${porscheHistoryMouseFollow.x}px), calc(-50% + ${gsapY + porscheHistoryMouseFollow.y}px))`;
+        },
+        onComplete: () => {
+            // Start scroll reveal effect after container reveals
+            initPorscheHistoryScrollReveal();
+        }
+    });
+    
+    porscheHistoryVisible = true;
+    document.body.classList.add('menu-open');
+    
+    // Close button handler
+    if (closeBtn) {
+        closeBtn.onclick = () => hidePorscheHistory();
+    }
+    
+    // Backdrop click handler
+    if (backdrop) {
+        backdrop.onclick = (event) => {
+            if (event.target === backdrop) {
+                hidePorscheHistory();
+            }
+        };
+    }
+}
+
+// Soft opacity reveal effect on scroll for Porsche history
+let porscheHistoryScrollRevealActive = false;
+let porscheHistoryScrollRevealElements = null; // Track revealed elements
+function initPorscheHistoryScrollReveal() {
+    // Reset on each new open - clear previous state
+    porscheHistoryScrollRevealElements = null;
+    
+    if (porscheHistoryScrollRevealActive) {
+        // If already active, reset it first
+        porscheHistoryScrollRevealActive = false;
+    }
+    
+    const content = document.getElementById('porsche-history-content');
+    if (!content) return;
+    
+    // Initialize custom scrollbar
+    const scrollbar = document.getElementById('porsche-history-scrollbar');
+    const scrollbarThumb = document.getElementById('porsche-history-scrollbar-thumb');
+    const container = document.getElementById('porsche-history-container');
+    
+    function updateScrollbar() {
+        if (!scrollbar || !scrollbarThumb || !container || !content) return;
+        
+        const scrollHeight = content.scrollHeight;
+        const clientHeight = content.clientHeight;
+        const scrollTop = content.scrollTop;
+        
+        if (scrollHeight <= clientHeight) {
+            // No scroll needed
+            scrollbar.style.display = 'none';
+            return;
+        }
+        
+        // Position scrollbar to the right of container, matching container height
+        const containerRect = container.getBoundingClientRect();
+        scrollbar.style.left = `${containerRect.right + 4}px`; // 4px gap from container
+        scrollbar.style.top = `${containerRect.top}px`; // Match container top position
+        scrollbar.style.height = `${containerRect.height}px`; // Match container height
+        scrollbar.style.display = 'block';
+        
+        // Calculate thumb height based on visible area
+        const thumbHeight = (clientHeight / scrollHeight) * scrollbar.clientHeight;
+        scrollbarThumb.style.height = `${thumbHeight}px`;
+        
+        // Calculate thumb position based on scroll position
+        const maxScrollTop = scrollHeight - clientHeight;
+        const thumbTop = maxScrollTop > 0 ? (scrollTop / maxScrollTop) * (scrollbar.clientHeight - thumbHeight) : 0;
+        scrollbarThumb.style.top = `${thumbTop}px`;
+    }
+    
+    // Update scrollbar position on window resize
+    window.addEventListener('resize', updateScrollbar);
+    
+    // Update scrollbar on scroll
+    content.addEventListener('scroll', updateScrollbar);
+    
+    // Make scrollbar draggable
+    let isDragging = false;
+    let startY = 0;
+    let startScrollTop = 0;
+    
+    scrollbarThumb.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startY = e.clientY;
+        startScrollTop = content.scrollTop;
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaY = e.clientY - startY;
+        const scrollbarHeight = scrollbar.clientHeight;
+        const thumbHeight = parseFloat(scrollbarThumb.style.height) || 0;
+        const scrollHeight = content.scrollHeight;
+        const clientHeight = content.clientHeight;
+        const maxScrollTop = scrollHeight - clientHeight;
+        
+        const scrollRatio = deltaY / (scrollbarHeight - thumbHeight);
+        const newScrollTop = Math.max(0, Math.min(maxScrollTop, startScrollTop + (scrollRatio * maxScrollTop)));
+        content.scrollTop = newScrollTop;
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+    
+    // Allow clicking on scrollbar track to jump
+    scrollbar.addEventListener('click', (e) => {
+        if (e.target === scrollbarThumb) return;
+        
+        const clickY = e.clientY - scrollbar.getBoundingClientRect().top;
+        const scrollbarHeight = scrollbar.clientHeight;
+        const thumbHeight = parseFloat(scrollbarThumb.style.height) || 0;
+        const scrollHeight = content.scrollHeight;
+        const clientHeight = content.clientHeight;
+        const maxScrollTop = scrollHeight - clientHeight;
+        
+        const clickRatio = clickY / scrollbarHeight;
+        const newScrollTop = clickRatio * maxScrollTop;
+        content.scrollTop = newScrollTop;
+    });
+    
+    // Initial update
+    setTimeout(() => {
+        updateScrollbar();
+    }, 100);
+    
+    porscheHistoryScrollRevealActive = true;
+    const paragraphs = Array.from(content.querySelectorAll('p'));
+    const headings = Array.from(content.querySelectorAll('h3'));
+    const imagePlaceholders = Array.from(content.querySelectorAll('.porsche-history-image-placeholder'));
+    const images = Array.from(content.querySelectorAll('.porsche-history-image'));
+    const imageCaptions = Array.from(content.querySelectorAll('.porsche-history-image-caption'));
+    const allElements = [...paragraphs, ...headings, ...imagePlaceholders, ...images, ...imageCaptions];
+    let revealedElements = new Set();
+    porscheHistoryScrollRevealElements = revealedElements; // Store for reset
+    
+    // Function to reveal elements on scroll with opacity fade
+    function revealOnScroll() {
+        allElements.forEach((el, index) => {
+            if (revealedElements.has(el)) return; // Already revealed
+            
+            const rect = el.getBoundingClientRect();
+            const contentRect = content.getBoundingClientRect();
+            const relativeTop = rect.top - contentRect.top;
+            
+            // Reveal when element is 150px into view
+            if (relativeTop < content.clientHeight - 150) {
+                revealedElements.add(el);
+                
+                // Special handling for images - mask reveal from left to right
+                if (el.classList.contains('porsche-history-image')) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(10px)';
+                    el.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
+                    el.classList.add('visible');
+                    
+                    const gsap = window.gsap || window.GSAP;
+                    if (gsap) {
+                        gsap.to(el, {
+                            opacity: 1,
+                            y: 0,
+                            clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                            duration: 0.8,
+                            ease: 'expo.inOut' // Sharp quant ease (exponential)
+                        });
+                    } else {
+                        // Fallback CSS transition
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'translateY(0)';
+                            el.style.clipPath = 'inset(0 0% 0 0)';
+                        }, 50);
+                    }
+                    
+                    // Reveal caption when image reveal completes (caption is next sibling within wrapper)
+                    const wrapper = el.parentElement;
+                    const caption = wrapper ? wrapper.querySelector('.porsche-history-image-caption') : null;
+                    if (caption) {
+                        // Immediately mark caption as will be revealed (prevent it from being skipped in the loop)
+                        revealedElements.add(caption);
+                        
+                        // Start caption reveal animation when image reveal completes
+                        const gsap = window.gsap || window.GSAP;
+                        if (gsap) {
+                            // Start caption animation immediately after image animation completes
+                            gsap.set(caption, {
+                                opacity: 0,
+                                y: 10,
+                                clipPath: 'inset(0 100% 0 0)' // Start: fully masked from left
+                            });
+                            caption.classList.add('visible');
+                            
+                            // Start caption reveal right when image reveal completes (duration 0.8s)
+                            setTimeout(() => {
+                                gsap.to(caption, {
+                                    opacity: 1,
+                                    y: 0,
+                                    clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                    duration: 0.8,
+                                    ease: 'expo.inOut' // Same sharp quant ease as image
+                                });
+                            }, 800); // Start exactly when image reveal completes (0.8s duration)
+                        } else {
+                            // Fallback
+                            setTimeout(() => {
+                                caption.style.opacity = '1';
+                                caption.style.transform = 'translateY(0)';
+                                caption.style.clipPath = 'inset(0 0% 0 0)';
+                            }, 800);
+                        }
+                    }
+                } else if (el.classList.contains('porsche-history-image-caption')) {
+                    // Captions are handled by their preceding image
+                    // Check if the image has been revealed, and if so, reveal the caption too
+                    const wrapper = el.parentElement;
+                    const image = wrapper ? wrapper.querySelector('.porsche-history-image') : null;
+                    if (image && revealedElements.has(image)) {
+                        // Image is already revealed, so reveal caption now with mask reveal
+                        revealedElements.add(el);
+                        el.style.opacity = '0';
+                        el.style.transform = 'translateY(10px)';
+                        el.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
+                        el.classList.add('visible');
+                        
+                        const gsap = window.gsap || window.GSAP;
+                        if (gsap) {
+                            gsap.to(el, {
+                                opacity: 1,
+                                y: 0,
+                                clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                duration: 0.8,
+                                ease: 'expo.inOut' // Same sharp quant ease as image
+                            });
+                        } else {
+                            setTimeout(() => {
+                                el.style.opacity = '1';
+                                el.style.transform = 'translateY(0)';
+                                el.style.clipPath = 'inset(0 0% 0 0)';
+                            }, 50);
+                        }
+                    } else if (!image) {
+                        // Fallback: if no image found, reveal caption anyway when scrolled into view with mask reveal
+                        revealedElements.add(el);
+                        el.style.opacity = '0';
+                        el.style.transform = 'translateY(10px)';
+                        el.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
+                        el.classList.add('visible');
+                        
+                        const gsap = window.gsap || window.GSAP;
+                        if (gsap) {
+                            gsap.to(el, {
+                                opacity: 1,
+                                y: 0,
+                                clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                duration: 0.8,
+                                ease: 'expo.inOut' // Same sharp quant ease as image
+                            });
+                        } else {
+                            setTimeout(() => {
+                                el.style.opacity = '1';
+                                el.style.transform = 'translateY(0)';
+                                el.style.clipPath = 'inset(0 0% 0 0)';
+                            }, 50);
+                        }
+                    }
+                    // Always return here - caption will be revealed when image is revealed or as fallback
+                    return;
+                } else {
+                    // Regular soft opacity fade-in for text elements
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(10px)';
+                    el.classList.add('visible');
+                    
+                    // Fade in with GSAP for smooth animation
+                    const gsap = window.gsap || window.GSAP;
+                    if (gsap) {
+                        gsap.to(el, {
+                            opacity: 1,
+                            y: 0,
+                            duration: 0.6,
+                            ease: 'power2.out'
+                        });
+                    } else {
+                        // Fallback CSS transition
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'translateY(0)';
+                        }, 50);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initial reveal for first few elements
+    if (allElements.length > 0) {
+        setTimeout(() => {
+            // Reveal first paragraph and first heading
+            allElements.slice(0, Math.min(2, allElements.length)).forEach((el, idx) => {
+                revealedElements.add(el);
+                
+                // Check if it's an image
+                if (el.classList.contains('porsche-history-image')) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(10px)';
+                    el.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
+                    el.classList.add('visible');
+                    
+                    const gsap = window.gsap || window.GSAP;
+                    if (gsap) {
+                        gsap.to(el, {
+                            opacity: 1,
+                            y: 0,
+                            clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                            duration: 0.8,
+                            delay: idx * 0.1,
+                            ease: 'expo.inOut' // Sharp quant ease
+                        });
+                    } else {
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'translateY(0)';
+                            el.style.clipPath = 'inset(0 0% 0 0)';
+                        }, idx * 100);
+                    }
+                    
+                    // Reveal caption after image (caption is next sibling within wrapper)
+                    const wrapper = el.parentElement;
+                    const caption = wrapper ? wrapper.querySelector('.porsche-history-image-caption') : null;
+                    if (caption) {
+                        // Immediately mark caption as will be revealed
+                        revealedElements.add(caption);
+                        
+                        const gsap = window.gsap || window.GSAP;
+                        if (gsap) {
+                            // Start caption animation when image reveal completes
+                            gsap.set(caption, {
+                                opacity: 0,
+                                y: 10,
+                                clipPath: 'inset(0 100% 0 0)' // Start: fully masked from left
+                            });
+                            caption.classList.add('visible');
+                            
+                            // Start caption reveal when image reveal completes (0.8s duration + delay)
+                            const imageDelay = idx * 0.1; // Delay in seconds
+                            setTimeout(() => {
+                                gsap.to(caption, {
+                                    opacity: 1,
+                                    y: 0,
+                                    clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                    duration: 0.8,
+                                    ease: 'expo.inOut' // Same sharp quant ease as image
+                                });
+                            }, 800 + (imageDelay * 1000)); // Start when image completes (800ms + delay in ms)
+                        } else {
+                            // Fallback
+                            setTimeout(() => {
+                                caption.style.opacity = '1';
+                                caption.style.transform = 'translateY(0)';
+                                caption.style.clipPath = 'inset(0 0% 0 0)';
+                            }, 800);
+                        }
+                    }
+                } else if (el.classList.contains('porsche-history-image-caption')) {
+                    // Captions are handled by their preceding image
+                    return;
+                } else {
+                    // Regular text elements
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(10px)';
+                    el.classList.add('visible');
+                    
+                    const gsap = window.gsap || window.GSAP;
+                    if (gsap) {
+                        gsap.to(el, {
+                            opacity: 1,
+                            y: 0,
+                            duration: 0.6,
+                            delay: idx * 0.1,
+                            ease: 'power2.out'
+                        });
+                    } else {
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'translateY(0)';
+                        }, idx * 100);
+                    }
+                }
+            });
+        }, 200);
+    }
+    
+    // Reveal the buttons when user scrolls near bottom
+    const doneButton = content.querySelector('.porsche-history-done-button');
+    const buyButton = content.querySelector('.porsche-history-buy-button');
+    
+    // Set buy button width to match done button width (minimum width)
+    function syncButtonWidths() {
+        if (doneButton && buyButton) {
+            // Force a layout calculation to get actual width
+            const doneWidth = doneButton.offsetWidth;
+            if (doneWidth > 0) {
+                buyButton.style.width = doneWidth + 'px';
+            }
+        }
+    }
+    
+    function checkDoneButton() {
+        if (!doneButton) return;
+        
+        const scrollTop = content.scrollTop;
+        const scrollHeight = content.scrollHeight;
+        const clientHeight = content.clientHeight;
+        
+        // Show buttons when user is within 200px of bottom
+        if (scrollHeight - scrollTop - clientHeight < 200) {
+            if (doneButton && !doneButton.classList.contains('visible')) {
+                doneButton.classList.add('visible');
+                const gsap = window.gsap || window.GSAP;
+                if (gsap) {
+                    gsap.to(doneButton, {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.6,
+                        ease: 'power2.out',
+                        onComplete: () => {
+                            // Sync widths after done button is visible (has its natural width)
+                            syncButtonWidths();
+                        }
+                    });
+                } else {
+                    // Fallback: sync after a short delay
+                    setTimeout(syncButtonWidths, 100);
+                }
+            }
+            if (buyButton && !buyButton.classList.contains('visible')) {
+                buyButton.classList.add('visible');
+                const gsap = window.gsap || window.GSAP;
+                if (gsap) {
+                    gsap.to(buyButton, {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.6,
+                        delay: 0.1,
+                        ease: 'power2.out'
+                    });
+                }
+            }
+        }
+    }
+    
+    // Sync widths immediately and on resize (if buttons exist)
+    if (doneButton && buyButton) {
+        syncButtonWidths();
+        window.addEventListener('resize', syncButtonWidths);
+    }
+    
+    // Add button click handlers and hover sounds
+    if (doneButton) {
+        doneButton.addEventListener('click', () => {
+            hidePorscheHistory();
+        });
+        // Add hover sound (same as UI buttons)
+        doneButton.addEventListener('mouseenter', () => {
+            createUISound('hover');
+        });
+    }
+    
+    if (buyButton) {
+        buyButton.addEventListener('click', () => {
+            // Hide Porsche history first, then show out of funds popup
+            hidePorscheHistory();
+            // Wait for animation to complete before showing new popup
+            setTimeout(() => {
+                showOutOfFundsPopup();
+            }, 450); // Slightly longer than hide animation (400ms)
+        });
+        // Add hover sound (same as UI buttons)
+        buyButton.addEventListener('mouseenter', () => {
+            createUISound('hover');
+        });
+    }
+    
+    // Check on scroll (combined with reveal function and button check)
+    const scrollHandler = () => {
+        revealOnScroll();
+        if (doneButton) {
+            checkDoneButton();
+        }
+    };
+    content.addEventListener('scroll', scrollHandler);
+    
+    // Check button visibility on initial load
+    if (doneButton) {
+        checkDoneButton();
+    }
+    
+    // Check on initial load - always call revealOnScroll
+    // Use setTimeout to ensure DOM is ready and elements are measured
+    setTimeout(() => {
+        revealOnScroll();
+    }, 100);
+}
+
+function hidePorscheHistory() {
+    const gsap = window.gsap || window.GSAP;
+    const overlay = document.getElementById('porsche-history-overlay');
+    const container = document.getElementById('porsche-history-container');
+    const backdrop = document.getElementById('porsche-history-backdrop');
+    
+    if (!overlay || !container) return;
+    
+    // Reset scroll reveal state
+    porscheHistoryScrollRevealActive = false;
+    porscheHistoryScrollRevealElements = null;
+    
+    // Reset Porsche history mouse follow position
+    if (porscheHistoryFollowAnimation) {
+        porscheHistoryFollowAnimation.kill();
+        porscheHistoryFollowAnimation = null;
+    }
+    porscheHistoryMouseFollow.x = 0;
+    porscheHistoryMouseFollow.y = 0;
+    porscheHistoryMouseFollow.targetX = 0;
+    porscheHistoryMouseFollow.targetY = 0;
+    
+    // Reset scroll position when closing
+    const content = document.getElementById('porsche-history-content');
+    if (content) {
+        content.scrollTop = 0;
+    }
+    
+    // Remove all visible classes from paragraphs, headings, image placeholders, images, captions, and done button
+    if (content) {
+        const allElements = content.querySelectorAll('p, h3, .porsche-history-image-placeholder, .porsche-history-image, .porsche-history-image-caption, .porsche-history-done-button, .porsche-history-buy-button');
+        allElements.forEach(el => {
+            el.classList.remove('visible');
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(10px)';
+        });
+    }
+    
+    // GSAP animation: hard mask hide upward (exact same as part menu - using y property, not transform)
+    gsap.to(container, {
+        clipPath: 'inset(0% 0% 100% 0%)', // Hide by masking from bottom (reveal from top, 100% hidden at bottom)
+        y: 0, // Keep at final position while hiding (same as part menu)
+        duration: 0.4,
+        ease: 'power2.in',
+        onComplete: () => {
+            overlay.classList.remove('visible');
+            porscheHistoryVisible = false;
+            document.body.classList.remove('menu-open');
+            
+            // Fade in UI elements (same as part menu) - including book button
+            const partContainerEl = document.getElementById('part-container');
+            const uiButtons = [
+                document.getElementById('music-player'),
+                document.getElementById('fullscreen-button'),
+                document.getElementById('rotate-button'),
+                document.getElementById('info-button'),
+                document.getElementById('book-button')
+            ];
+            
+            const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+            allElements.forEach(el => {
+                el.style.transition = 'none';
+            });
+            
+            if (partContainerEl && infoPanelEnabled) {
+                gsap.to(partContainerEl, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+            }
+            
+            uiButtons.forEach(btn => {
+                if (btn) {
+                    gsap.to(btn, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+                }
+            });
+            
+            if (uiCogMesh && uiCogMesh.material) {
+                gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+            }
+        }
+    });
+    
+    // Fade out backdrop
+    gsap.to(backdrop, { opacity: 0, duration: 0.3 });
+    
+    console.log('Porsche history popup hidden');
+}
+
+// Out of Funds popup functions
+function showOutOfFundsPopup() {
+    const gsap = window.gsap || window.GSAP;
+    const overlay = document.getElementById('out-of-funds-overlay');
+    const container = document.getElementById('out-of-funds-container');
+    const backdrop = document.getElementById('out-of-funds-backdrop');
+    const button = document.getElementById('out-of-funds-button');
+
+    if (!overlay || !container) {
+        console.warn('Out of funds elements not found', { overlay, container });
+        return;
+    }
+
+    console.log('Showing Out of Funds popup');
+
+    // Hide UI elements when popup opens (same as part menu)
+    const partContainerEl = document.getElementById('part-container');
+    const uiButtons = [
+        document.getElementById('music-player'),
+        document.getElementById('fullscreen-button'),
+        document.getElementById('rotate-button'),
+        document.getElementById('info-button'),
+        document.getElementById('book-button')
+    ];
+
+    const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+    allElements.forEach(el => {
+        el.style.transition = 'none';
+    });
+
+    if (partContainerEl) {
+        gsap.to(partContainerEl, { opacity: 0, duration: 0.3, ease: 'power2.out', overwrite: true });
+    }
+
+    uiButtons.forEach(btn => {
+        if (btn) {
+            gsap.to(btn, { opacity: 0, duration: 0.3, ease: 'power2.out', overwrite: true });
+        }
+    });
+
+    // Hide Porsche logo (3D mesh) with same timing
+    if (uiCogMesh && uiCogMesh.material) {
+        gsap.to(uiCogMesh.material, { opacity: 0, duration: 0.3, ease: 'power2.out' });
+    }
+
+    // Hide button initially for reveal animation (same as part menu options)
+    if (button) {
+        button.style.opacity = '0';
+        button.style.transform = 'translateY(20px)';
+    }
+
+    // Show overlay
+    overlay.classList.add('visible');
+    gsap.set(overlay, { opacity: 1 });
+
+    // GSAP animation: fade in backdrop (same as part menu)
+    gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+
+    // GSAP animation: hard mask reveal downward (exact same as part menu - using y property, not transform)
+    gsap.set(container, {
+        clipPath: 'inset(0% 0% 100% 0%)', // Start: fully masked (revealed from top, 100% hidden at bottom)
+        y: -50 // Start 50px above final position (same as part menu)
+    });
+    gsap.to(container, {
+        clipPath: 'inset(0% 0% 0% 0%)', // End: fully revealed
+        y: 0, // Ease into final position (50px downward movement, same as part menu)
+        duration: 0.25,
+        ease: 'circ.out', // Circular easing - intense at start, smooth at end (same as part menu)
+        onComplete: () => {
+            // Reveal button with same animation as part menu options
+            if (button) {
+                gsap.set(button, { opacity: 0, y: -20 }); // Start from top (negative y, same as part menu)
+                gsap.to(button, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.3,
+                    delay: 0,
+                    ease: 'power1.out' // Simple ease-out, no bounce (same as part menu)
+                });
+            }
+        }
+    });
+
+    outOfFundsVisible = true;
+    document.body.classList.add('menu-open');
+
+    // Button handler
+    if (button) {
+        button.onclick = () => hideOutOfFundsPopup();
+    }
+
+    // Backdrop click handler
+    if (backdrop) {
+        backdrop.onclick = (event) => {
+            if (event.target === backdrop) {
+                hideOutOfFundsPopup();
+            }
+        };
+    }
+}
+
+function hideOutOfFundsPopup() {
+    const gsap = window.gsap || window.GSAP;
+    const overlay = document.getElementById('out-of-funds-overlay');
+    const container = document.getElementById('out-of-funds-container');
+    const backdrop = document.getElementById('out-of-funds-backdrop');
+
+    if (!overlay || !container) return;
+
+    // GSAP animation: hard mask hide upward (exact same as part menu - using y property, not transform)
+    gsap.to(container, {
+        clipPath: 'inset(0% 0% 100% 0%)', // Hide by masking from bottom (reveal from top, 100% hidden at bottom)
+        y: 0, // Keep at final position while hiding (same as part menu)
+        duration: 0.4,
+        ease: 'power2.in',
+        onComplete: () => {
+            overlay.classList.remove('visible');
+            outOfFundsVisible = false;
+            document.body.classList.remove('menu-open');
+
+            // Fade in UI elements
+            const partContainerEl = document.getElementById('part-container');
+            const uiButtons = [
+                document.getElementById('music-player'),
+                document.getElementById('fullscreen-button'),
+                document.getElementById('rotate-button'),
+                document.getElementById('info-button'),
+                document.getElementById('book-button')
+            ];
+
+            const allElements = [partContainerEl, ...uiButtons].filter(el => el !== null);
+            allElements.forEach(el => {
+                el.style.transition = 'none';
+            });
+
+            if (partContainerEl && infoPanelEnabled) {
+                gsap.to(partContainerEl, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+            }
+
+            uiButtons.forEach(btn => {
+                if (btn) {
+                    gsap.to(btn, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
+                }
+            });
+
+            if (uiCogMesh && uiCogMesh.material) {
+                gsap.to(uiCogMesh.material, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+            }
+        }
+    });
+
+    // Fade out backdrop
+    gsap.to(backdrop, { opacity: 0, duration: 0.3 });
+
+    console.log('Out of funds popup hidden');
+}
+
+// Close popups with ESC key
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        if (outOfFundsVisible) {
+            hideOutOfFundsPopup();
+        } else if (menuVisible) {
+            hidePartMenu();
+        } else if (porscheHistoryVisible) {
+            hidePorscheHistory();
+        }
+    }
+});
 
 // Load Porsche model
 const loader = new FBXLoader();
@@ -4748,6 +5953,7 @@ setTimeout(resetHoverStates, 1000);
     initializeInfoToggle();
     initializeUICog();
     initializeRotateToggle();
+    initializeBookButton();
     initializeUIHoverBlink();
 
     // Fade out loading overlay after brief intro

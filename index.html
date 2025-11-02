@@ -97,7 +97,7 @@
             width: 50px;
             height: 50px;
             pointer-events: none;
-            z-index: 10000; /* Higher than menu overlay (9999) to be visible on top */
+            z-index: 10001; /* Higher than all overlays (10000 for out of funds, 9999 for part menu) to be visible on top */
             transform: translate(-50%, -50%);
         }
         #cursor-cross::before,
@@ -368,6 +368,26 @@
         #info-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
         #info-button.off #info-icon svg { stroke: #ff4444; }
         
+        /* Book button for Porsche history */
+        #book-button {
+            position: fixed;
+            top: 50px;
+            right: 330px; /* Position to the left of rotate button (260px) */
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        #book-button:hover { transform: scale(1.1); }
+        #book-icon, #book-icon svg { width: 36px; height: 36px; }
+        #book-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
+        
         @keyframes hardBlink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
@@ -511,6 +531,382 @@
             }
         }
 
+        /* Porsche History Overlay */
+        #porsche-history-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+        }
+        #porsche-history-overlay.visible {
+            display: block;
+            pointer-events: all;
+        }
+        #porsche-history-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(2px);
+            pointer-events: all;
+        }
+        #porsche-history-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 85vw;
+            max-width: 900px; /* Larger than part menu (600px) */
+            max-height: 85vh;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #ffd700;
+            border-radius: 0;
+            padding: 50px; /* Equal padding on all sides now that scrollbar is outside */
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* Centering handled by GSAP via transform */
+            transform: translate(-50%, -50%);
+        }
+        #porsche-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px; /* Match part menu spacing */
+            padding-bottom: 0;
+            border-bottom: none; /* Match part menu - no border */
+        }
+        #porsche-history-title {
+            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 42px; /* Larger for magazine style */
+            font-weight: bold;
+            color: #ffd700;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        #porsche-history-close {
+            background: rgba(255, 215, 0, 0.1); /* Match part menu button */
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-size: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s ease;
+        }
+        #porsche-history-close:hover {
+            background: #ffd700;
+            color: #000;
+            transform: scale(1.1);
+        }
+        #porsche-history-content {
+            color: #ffd700;
+            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 22px; /* 22pt body text */
+            font-weight: 300;
+            line-height: 1.9; /* Better line spacing for magazine */
+            overflow-y: scroll; /* Enable scrolling */
+            padding-left: 0; /* No padding here - container handles left padding */
+            padding-right: 0; /* No right padding - scrollbar is outside */
+            flex: 1;
+            /* Hide default scrollbar */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        #porsche-history-content::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera - hide default scrollbar */
+        }
+        /* Custom scrollbar positioned outside container */
+        #porsche-history-scrollbar {
+            position: fixed;
+            width: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+            z-index: 10001;
+            /* Position will be calculated in JavaScript to be to the right of container */
+            display: none; /* Hidden by default, shown when content scrolls */
+        }
+        #porsche-history-scrollbar-thumb {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background: #ffd700;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        #porsche-history-scrollbar-thumb:hover {
+            background: #ffed4e;
+        }
+        #porsche-history-content h3 {
+            color: #ffd700;
+            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 28px; /* Larger headings */
+            font-weight: bold;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        #porsche-history-content p,
+        #porsche-history-content h3 {
+            margin-bottom: 20px;
+            opacity: 0; /* Start hidden for scroll reveal */
+            transform: translateY(10px); /* Start slightly below for reveal */
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        #porsche-history-content p.visible,
+        #porsche-history-content h3.visible {
+            /* Opacity and transform controlled by GSAP */
+        }
+        #porsche-history-content em {
+            font-style: italic;
+            font-size: 20px; /* Slightly larger for emphasis */
+        }
+        #porsche-history-content strong {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .porsche-history-done-button {
+            margin-top: 0; /* No margin - container handles spacing, matches buy button */
+            padding: 16px 24px; /* Match part menu option padding */
+            background: rgba(255, 215, 0, 0.1); /* Match part menu option neutral state */
+            border: 1px solid #ffd700; /* Match part menu option border */
+            border-radius: 0; /* Match part menu option - no rounded corners */
+            color: #ffd700; /* Match part menu option color */
+            font-family: 'Space Mono', 'Courier New', monospace; /* Match part menu font */
+            font-size: 20px; /* Match part menu option font size */
+            font-weight: 400; /* Match part menu option font weight */
+            text-align: left; /* Left aligned */
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
+            opacity: 0;
+            transform: translateY(20px); /* Match part menu option initial transform */
+            width: fit-content; /* Fit content, left aligned - this sets the minimum width */
+            min-width: fit-content; /* Ensure minimum width based on content */
+            position: relative;
+            line-height: normal; /* Ensure consistent line-height */
+        }
+        .porsche-history-done-button.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .porsche-history-done-button:hover {
+            background: #ffd700 !important; /* Match part menu option hover */
+            color: #000 !important; /* Match part menu option hover */
+            border-color: #ffd700 !important;
+            transform: translateX(8px) translateY(0); /* Match part menu option hover transform */
+        }
+        .porsche-history-buttons {
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            margin-top: 32px;
+        }
+        .porsche-history-buy-button {
+            margin-top: 0; /* Reset margin, handled by buttons container - match done button exactly */
+            padding: 16px 24px; /* Match done button padding exactly */
+            background: rgba(255, 215, 0, 0.1); /* Match done button neutral state */
+            border: 1px solid #ffd700; /* Match done button border */
+            border-radius: 0; /* Match done button - no rounded corners */
+            color: #ffd700; /* Match done button color */
+            font-family: 'Space Mono', 'Courier New', monospace; /* Match done button font */
+            font-size: 20px; /* Match done button font size */
+            font-weight: 400; /* Match done button font weight */
+            text-align: center; /* Center aligned text */
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
+            opacity: 0;
+            transform: translateY(20px); /* Match done button initial transform */
+            width: fit-content; /* Will be set to match done button width via JavaScript */
+            min-width: fit-content; /* Match done button minimum width */
+            position: relative;
+            line-height: normal; /* Ensure line-height matches */
+        }
+        .porsche-history-buy-button.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .porsche-history-buy-button:hover {
+            background: #ffd700 !important; /* Match part menu option hover */
+            color: #000 !important; /* Match part menu option hover */
+            border-color: #ffd700 !important;
+            transform: translateX(8px) translateY(0); /* Match part menu option hover transform */
+        }
+        /* Image placeholder boxes */
+        .porsche-history-image-placeholder {
+            width: 100%;
+            aspect-ratio: 16 / 9; /* Standard image ratio */
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px 0;
+            color: #ffd700;
+            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 14px;
+            font-weight: 300;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .porsche-history-image-placeholder.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* Image and caption wrapper */
+        .porsche-history-image-wrapper {
+            width: 80%; /* 80% of reading text width */
+            margin-top: 62px; /* Match spacing below caption (synced vertical whitespace) */
+            margin-bottom: 0; /* No bottom margin, handled by caption */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* Actual image boxes */
+        .porsche-history-image {
+            width: 100%; /* Full width of wrapper */
+            aspect-ratio: 16 / 9; /* Standard image ratio */
+            margin: 0; /* No margin, handled by wrapper */
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            overflow: hidden;
+            position: relative;
+            clip-path: inset(0 100% 0 0); /* Start: masked from left (0% revealed, 100% hidden on right) */
+        }
+        .porsche-history-image.visible {
+            opacity: 1;
+            transform: translateY(0);
+            clip-path: inset(0 0% 0 0); /* End: fully revealed */
+            transition: opacity 0.6s cubic-bezier(0.85, 0, 0.15, 1), transform 0.6s cubic-bezier(0.85, 0, 0.15, 1), clip-path 0.8s cubic-bezier(0.85, 0, 0.15, 1); /* Sharp quant ease */
+        }
+        .porsche-history-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Crop to fit the box */
+            display: block;
+            max-width: 1920px; /* Scale down large images to 1920px width */
+            filter: grayscale(100%);
+            mix-blend-mode: multiply;
+        }
+        .porsche-history-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffd700; /* UI yellow */
+            mix-blend-mode: multiply;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .porsche-history-image-caption {
+            margin-top: 8px;
+            margin-bottom: 62px; /* Match spacing above image (matches wrapper margin-top) */
+            margin-left: 0; /* Align with image left edge - same container */
+            width: 100%; /* Full width of wrapper, same as image */
+            font-family: 'Helvetica', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 16px;
+            font-weight: 300;
+            color: rgba(255, 215, 0, 0.7);
+            text-align: left; /* Left align to match image */
+            font-style: italic;
+            opacity: 0;
+            transform: translateY(10px);
+            overflow: hidden;
+            position: relative;
+            clip-path: inset(0 100% 0 0); /* Start: masked from left (same as image) */
+            transition: opacity 0.6s ease, transform 0.6s ease, clip-path 0.8s cubic-bezier(0.85, 0, 0.15, 1);
+        }
+        .porsche-history-image-caption.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Out of Funds Overlay - styled like part menu but red */
+        #out-of-funds-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+            cursor: none !important;
+        }
+        #out-of-funds-overlay.visible {
+            display: block;
+            pointer-events: all;
+            cursor: none !important;
+        }
+        #out-of-funds-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(2px);
+            pointer-events: all;
+        }
+        #out-of-funds-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            max-width: 600px;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #ff4444;
+            border-radius: 0;
+            padding: 32px;
+            box-shadow: 0 0 40px rgba(255, 68, 68, 0.3);
+            /* GSAP will animate y property, so we need to support it */
+        }
+        #out-of-funds-header {
+            margin-bottom: 32px;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        #out-of-funds-title {
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 32px;
+            font-weight: 400;
+            color: #ff4444;
+            margin: 0;
+            text-align: left;
+        }
+        #out-of-funds-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #out-of-funds-button {
+            padding: 16px 24px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            border-radius: 0;
+            color: #ff4444;
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 20px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
+            width: fit-content;
+        }
+        #out-of-funds-button:hover {
+            background: #ff4444 !important;
+            color: #000 !important;
+            border-color: #ff4444 !important;
+            transform: translateX(8px);
+        }
+        
         /* Part Menu Overlay */
         #part-menu-overlay {
             position: fixed;
@@ -707,6 +1103,9 @@
     <div id="music-player" class="ui-fade">
         <div id="music-icon"></div>
     </div>
+    <div id="book-button" class="ui-fade">
+        <div id="book-icon"></div>
+    </div>
     <div id="rotate-button" class="ui-fade">
         <div id="rotate-icon"></div>
     </div>
@@ -715,6 +1114,33 @@
     </div>
     <div id="fullscreen-button" class="ui-fade">
         <div id="fullscreen-icon"></div>
+    </div>
+    <!-- Porsche History Overlay -->
+    <div id="porsche-history-overlay">
+        <div id="porsche-history-backdrop"></div>
+            <div id="porsche-history-container">
+                <div id="porsche-history-header">
+                    <h2 id="porsche-history-title">Porsche: The Cult of Precision</h2>
+                    <button id="porsche-history-close">&times;</button>
+                </div>
+                <div id="porsche-history-content"></div>
+            </div>
+            <div id="porsche-history-scrollbar">
+                <div id="porsche-history-scrollbar-thumb"></div>
+            </div>
+    </div>
+    
+    <!-- Out of Funds Overlay -->
+    <div id="out-of-funds-overlay">
+        <div id="out-of-funds-backdrop"></div>
+        <div id="out-of-funds-container">
+            <div id="out-of-funds-header">
+                <h2 id="out-of-funds-title">OUT OF FUNDS</h2>
+            </div>
+            <div id="out-of-funds-content">
+                <button id="out-of-funds-button">GET BACK TO WORK</button>
+            </div>
+        </div>
     </div>
     <!-- Part Menu Overlay -->
     <div id="part-menu-overlay">
