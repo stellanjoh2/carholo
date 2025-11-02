@@ -1148,6 +1148,12 @@
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(4px);
             cursor: none !important; /* Always use custom cursor */
+            opacity: 1;
+            transition: opacity 0.2s ease-out, backdrop-filter 0.2s ease-out;
+        }
+        .wiki-lightbox-overlay.closing #wiki-lightbox-backdrop {
+            opacity: 0 !important;
+            backdrop-filter: blur(0px) !important;
         }
         #wiki-lightbox-container {
             position: relative;
@@ -1157,9 +1163,6 @@
             align-items: center;
             justify-content: center;
             z-index: 1;
-            cursor: none !important; /* Always use custom cursor */
-        }
-        #wiki-lightbox-backdrop {
             cursor: none !important; /* Always use custom cursor */
         }
         #wiki-lightbox-image,
@@ -1191,6 +1194,11 @@
             pointer-events: none; /* Don't block clicks */
             transform: translate(-16.67%, -16.67%); /* Center the 150% scaled image */
         }
+        .wiki-lightbox-overlay.closing #wiki-lightbox-image-bg,
+        .wiki-lightbox-overlay.closing #wiki-lightbox-video-bg {
+            opacity: 0 !important;
+            transition: opacity 0.2s ease-out !important; /* Quick fade out */
+        }
         .wiki-lightbox-overlay.visible #wiki-lightbox-image-bg.loaded,
         .wiki-lightbox-overlay.visible #wiki-lightbox-video-bg.loaded {
             opacity: 1.0 !important; /* Fade to full opacity over 2s with ease-out for ambilight effect */
@@ -1207,7 +1215,7 @@
             filter: blur(10px) !important;
             transform: scale(0.95) !important;
             opacity: 0 !important;
-            transition: filter 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+            transition: filter 0.2s ease-out, transform 0.2s ease-out, opacity 0.2s ease-out;
         }
         .wiki-lightbox-close {
             position: absolute;
