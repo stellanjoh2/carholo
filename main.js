@@ -3518,6 +3518,18 @@ function showPorscheHistory() {
             container.style.transform = `translate(calc(-50% + ${porscheHistoryMouseFollow.x}px), calc(-50% + ${gsapY + porscheHistoryMouseFollow.y}px))`;
         },
         onComplete: () => {
+            // Animate headline entry (same as blurbs - mask reveal from left to right)
+            const title = document.getElementById('porsche-history-title');
+            if (title && gsap) {
+                gsap.to(title, {
+                    opacity: 1,
+                    y: 0,
+                    clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                    duration: 0.8,
+                    ease: 'expo.inOut'
+                });
+            }
+            
             // Start scroll reveal effect after container reveals
             initPorscheHistoryScrollReveal();
         }
@@ -3642,6 +3654,14 @@ function initPorscheHistoryScrollReveal() {
             
             // Only apply parallax while image is visible or just before/after
             if (scrollTop >= imageTop - content.clientHeight && scrollTop <= imageBottom + content.clientHeight) {
+                // Check if image has completed reveal animation (clip-path is not masked)
+                // Use a more lenient check - if clip-path contains "100%" it's still masked
+                const clipPath = window.getComputedStyle(img).clipPath || '';
+                const isStillMasked = clipPath.includes('100%');
+                
+                // Only apply parallax if image is revealed (not masked)
+                if (isStillMasked) return;
+                
                 // Calculate parallax offset - image scrolls slower than content (0.3 = 30% speed)
                 const parallaxSpeed = 0.3;
                 const scrollDelta = scrollTop - imageTop;
@@ -3659,24 +3679,7 @@ function initPorscheHistoryScrollReveal() {
         handleFullWidthParallax();
     }, 100);
     
-    // Track scroll to update header styling (scaled title and background opacity)
-    const header = document.getElementById('porsche-history-header');
-    if (header) {
-        const handleScroll = () => {
-            // Only process if history window is visible
-            if (!porscheHistoryVisible) return;
-            
-            const scrollTop = content.scrollTop;
-            if (scrollTop > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        };
-        content.addEventListener('scroll', handleScroll);
-        // Initial check
-        handleScroll();
-    }
+    // No scroll interactions for header - removed
     
     // Make scrollbar draggable
     let isDragging = false;
@@ -3735,8 +3738,9 @@ function initPorscheHistoryScrollReveal() {
     const headings = Array.from(content.querySelectorAll('h3'));
     const imagePlaceholders = Array.from(content.querySelectorAll('.porsche-history-image-placeholder'));
     const images = Array.from(content.querySelectorAll('.porsche-history-image'));
+    const fullWidthImages = Array.from(content.querySelectorAll('.porsche-history-fullwidth-image'));
     const imageCaptions = Array.from(content.querySelectorAll('.porsche-history-image-caption'));
-    const allElements = [...paragraphs, ...headings, ...imagePlaceholders, ...images, ...imageCaptions];
+    const allElements = [...paragraphs, ...headings, ...imagePlaceholders, ...images, ...fullWidthImages, ...imageCaptions];
     let revealedElements = new Set();
     porscheHistoryScrollRevealElements = revealedElements; // Store for reset
     
@@ -3756,28 +3760,68 @@ function initPorscheHistoryScrollReveal() {
             if (relativeTop < content.clientHeight - 150) {
                 revealedElements.add(el);
                 
-                // Special handling for images - mask reveal from left to right
+                // Special handling for images - yellow placeholder first, then image reveal on top
                 if (el.classList.contains('porsche-history-image')) {
-                    el.style.opacity = '0';
-                    el.style.transform = 'translateY(10px)';
-                    el.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
-                    el.classList.add('visible');
+                    // Create or get yellow placeholder block
+                    let placeholderBlock = el.querySelector('.porsche-history-image-placeholder-block');
+                    if (!placeholderBlock) {
+                        placeholderBlock = document.createElement('div');
+                        placeholderBlock.className = 'porsche-history-image-placeholder-block';
+                        el.insertBefore(placeholderBlock, el.firstChild); // Insert at beginning so it's behind image
+                    }
+                    
+                    const img = el.querySelector('img');
+                    el.style.opacity = '1'; // Container visible
+                    el.style.transform = 'translateY(0)';
+                    // Don't clip the container - clip the image itself
+                    if (img) {
+                        img.style.clipPath = 'inset(0 100% 0 0)'; // Image starts masked, so yellow shows through
+                        // No translation movement - same as big image
+                    }
+                    placeholderBlock.style.clipPath = 'inset(0 100% 0 0)'; // Placeholder starts masked
                     
                     const gsap = window.gsap || window.GSAP;
                     if (gsap) {
-                        gsap.to(el, {
-                            opacity: 1,
-                            y: 0,
+                        // First: reveal yellow placeholder block
+                        gsap.to(placeholderBlock, {
                             clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
                             duration: 0.8,
-                            ease: 'expo.inOut' // Sharp quant ease (exponential)
+                            ease: 'expo.inOut' // Sharp quant ease - same as before
                         });
+                        
+                        // Then: reveal image on top with same animation (same delay as big image)
+                        setTimeout(() => {
+                            el.classList.add('visible');
+                            if (img) {
+                                gsap.to(img, {
+                                    clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                    duration: 0.8,
+                                    ease: 'expo.inOut', // Same ease as big image
+                                    onComplete: () => {
+                                        // Hide yellow block after image reveal completes
+                                        gsap.to(placeholderBlock, {
+                                            opacity: 0,
+                                            duration: 0.3,
+                                            ease: 'power2.out'
+                                        });
+                                    }
+                                });
+                            }
+                        }, 200); // 200ms delay after placeholder starts (same as big image)
                     } else {
                         // Fallback CSS transition
                         setTimeout(() => {
-                            el.style.opacity = '1';
-                            el.style.transform = 'translateY(0)';
-                            el.style.clipPath = 'inset(0 0% 0 0)';
+                            placeholderBlock.style.clipPath = 'inset(0 0% 0 0)';
+                            setTimeout(() => {
+                                el.classList.add('visible');
+                                if (img) {
+                                    img.style.clipPath = 'inset(0 0% 0 0)';
+                                    // Hide yellow block after image reveal completes in fallback
+                                    setTimeout(() => {
+                                        placeholderBlock.style.opacity = '0';
+                                    }, 800); // After animation completes
+                                }
+                            }, 200); // 200ms delay (same as big image)
                         }, 50);
                     }
                     
@@ -3818,6 +3862,121 @@ function initPorscheHistoryScrollReveal() {
                             }, 800);
                         }
                     }
+                }
+                // Special handling for full-width images - yellow placeholder first, then image reveal on top
+                else if (el.classList.contains('porsche-history-fullwidth-image')) {
+                    const img = el.querySelector('img');
+                    if (!img) return;
+                    
+                    // Create or get yellow placeholder block
+                    let placeholderBlock = el.querySelector('.porsche-history-fullwidth-image-placeholder-block');
+                    if (!placeholderBlock) {
+                        placeholderBlock = document.createElement('div');
+                        placeholderBlock.className = 'porsche-history-fullwidth-image-placeholder-block';
+                        el.insertBefore(placeholderBlock, el.firstChild); // Insert at beginning so it's behind image
+                    }
+                    
+                    // Get caption
+                    const caption = el.querySelector('.porsche-history-fullwidth-image-caption');
+                    
+                    img.style.opacity = '1'; // Image visible
+                    img.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left, so yellow shows through
+                    placeholderBlock.style.clipPath = 'inset(0 100% 0 0)'; // Placeholder starts masked
+                    
+                    // Hide caption initially - will reveal after image loads
+                    if (caption) {
+                        revealedElements.add(caption); // Mark as will be revealed
+                        caption.style.opacity = '0';
+                        caption.style.transform = 'translateY(10px)';
+                        caption.style.clipPath = 'inset(0 100% 0 0)'; // Start: fully masked from left
+                    }
+                    
+                    const gsap = window.gsap || window.GSAP;
+                    
+                    // Check if image is already loaded
+                    const checkImageLoadAndReveal = () => {
+                        if (gsap) {
+                            // First: reveal yellow placeholder block
+                            gsap.to(placeholderBlock, {
+                                clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                duration: 0.8,
+                                ease: 'expo.inOut' // Sharp quant ease - same as before
+                            });
+                            
+                            // Then: reveal image on top with same animation (small delay)
+                            setTimeout(() => {
+                                gsap.to(img, {
+                                    clipPath: 'inset(0 0% 0 0)', // Reveal from left to right
+                                    duration: 0.8,
+                                    ease: 'expo.inOut', // Sharp quant ease - same as before
+                                    onComplete: () => {
+                                        // Hide yellow block after image reveal completes
+                                        gsap.to(placeholderBlock, {
+                                            opacity: 0,
+                                            duration: 0.3,
+                                            ease: 'power2.out'
+                                        });
+                                        
+                                        // Wait for image to be fully loaded before revealing caption
+                                        if (img.complete && img.naturalHeight !== 0) {
+                                            // Image already loaded, reveal caption immediately
+                                            revealFullWidthCaption(caption, gsap);
+                                        } else {
+                                            // Wait for image to load
+                                            img.addEventListener('load', () => {
+                                                revealFullWidthCaption(caption, gsap);
+                                            }, { once: true });
+                                            // Also handle error case
+                                            img.addEventListener('error', () => {
+                                                revealFullWidthCaption(caption, gsap);
+                                            }, { once: true });
+                                        }
+                                    }
+                                });
+                            }, 200); // 200ms delay after placeholder starts
+                        } else {
+                            // Fallback CSS transition
+                            setTimeout(() => {
+                                placeholderBlock.style.clipPath = 'inset(0 0% 0 0)';
+                                setTimeout(() => {
+                                    img.style.clipPath = 'inset(0 0% 0 0)';
+                                    if (img.complete && img.naturalHeight !== 0) {
+                                        revealFullWidthCaption(caption, null);
+                                    } else {
+                                        img.addEventListener('load', () => {
+                                            revealFullWidthCaption(caption, null);
+                                        }, { once: true });
+                                    }
+                                }, 200);
+                            }, 50);
+                        }
+                    };
+                    
+                    // Function to reveal full-width caption with same style as small image captions
+                    const revealFullWidthCaption = (cap, gsapLib) => {
+                        if (!cap) return;
+                        cap.classList.add('visible');
+                        
+                        if (gsapLib) {
+                            gsapLib.to(cap, {
+                                opacity: 1,
+                                y: 0,
+                                clipPath: 'inset(0 0% 0 0)', // Reveal from left to right - same as small captions
+                                duration: 0.8,
+                                ease: 'expo.inOut' // Same sharp quant ease as small captions
+                            });
+                        } else {
+                            // Fallback
+                            setTimeout(() => {
+                                cap.style.opacity = '1';
+                                cap.style.transform = 'translateY(0)';
+                                cap.style.clipPath = 'inset(0 0% 0 0)';
+                            }, 50);
+                        }
+                    };
+                    
+                    // Start the reveal animation
+                    checkImageLoadAndReveal();
                 }
                 // Special handling for paragraphs and headings - mask reveal from left to right with smooth slide-up
                 else if (el.tagName === 'P' || el.tagName === 'H3') {
@@ -4164,10 +4323,14 @@ function hidePorscheHistory() {
         content.scrollTop = 0;
     }
     
-    // Remove scrolled class from header
-    const header = document.getElementById('porsche-history-header');
-    if (header) {
-        header.classList.remove('scrolled');
+    // No header scroll interactions - removed
+    
+    // Reset title initial state for next open
+    const title = document.getElementById('porsche-history-title');
+    if (title) {
+        title.style.opacity = '0';
+        title.style.transform = 'translateY(10px)';
+        title.style.clipPath = 'inset(0 100% 0 0)'; // Reset mask
     }
     
     // Remove all visible classes from paragraphs, headings, image placeholders, images, captions, and done button
