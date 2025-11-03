@@ -1607,7 +1607,16 @@
     </div>
     
     <div id="canvas-container"></div>
-    <script type="module" src="main.js"></script>
+    <script type="module">
+        // Conditional loader: default = legacy main.js; use modules with ?mod=1
+        const params = new URLSearchParams(window.location.search);
+        const useModules = params.get('mod') === '1';
+        if (useModules) {
+            import('./src/app.js');
+        } else {
+            import('./main.js');
+        }
+    </script>
     <script>
         // Mobile detection - DISABLED (mobile message turned off completely)
         function isMobileDevice() {
