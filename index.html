@@ -1607,7 +1607,14 @@
     </div>
     
     <div id="canvas-container"></div>
+    <!-- Load legacy app + modular layer by default; pass ?legacy=1 to disable modules if needed -->
     <script type="module" src="main.js"></script>
+    <script type="module">
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('legacy') !== '1') {
+            import('./src/app.js');
+        }
+    </script>
     <script>
         // Mobile detection - DISABLED (mobile message turned off completely)
         function isMobileDevice() {
