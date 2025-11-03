@@ -74,13 +74,110 @@
             display: none !important;
         }
         
+        /* Video intro overlay - shown on page load */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            clip-path: inset(0% 0% 0% 0%);
+            pointer-events: auto; /* Block all interactions behind the video */
+        }
+        
+        #loading-overlay.hidden {
+            clip-path: inset(100% 0% 0% 0%);
+            pointer-events: none;
+        }
+        
+        #loading-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #enter-button {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 16px 48px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-family: 'DM Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer !important;
+            transition: all 0.3s ease;
+            z-index: 100000;
+            backdrop-filter: blur(10px);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        #loading-overlay {
+            cursor: default !important;
+        }
+        
+        #enter-button:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: translateX(-50%) scale(1.05);
+        }
+        
+        #enter-button:active {
+            transform: translateX(-50%) scale(0.98);
+        }
+        
+        /* Canvas is visible but covered by video overlay - preloading happens underneath */
+        #canvas-container {
+            opacity: 0;
+            visibility: visible; /* Visible but transparent so it can fade in */
+            pointer-events: none !important; /* NEVER allow interactions until Enter is clicked */
+            background: #000;
+            position: relative;
+            z-index: 1;
+        }
+        
+        #canvas-container.loaded {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        #canvas-container.loaded {
+            pointer-events: auto !important;
+        }
+        
+        body {
+            background: #000;
+        }
+        
         canvas {
             display: block;
             cursor: none;
+            pointer-events: none !important; /* Block all canvas interactions initially */
+        }
+        
+        /* Enable canvas interactions only after Enter is clicked */
+        #canvas-container.loaded canvas,
+        canvas.ready {
+            pointer-events: auto !important;
         }
         
         canvas:active {
             cursor: grabbing;
+        }
+        
+        /* Block canvas interactions when video overlay is visible */
+        #loading-overlay:not(.hidden) ~ * canvas,
+        body:has(#loading-overlay:not(.hidden)) canvas {
+            pointer-events: none !important;
         }
         /* ensure canvas sits behind overlays */
         #canvas-container {
@@ -99,6 +196,15 @@
             pointer-events: none;
             z-index: 10001; /* Higher than all overlays (10000 for out of funds, 9999 for part menu) to be visible on top */
             transform: translate(-50%, -50%);
+            opacity: 0; /* Hidden initially */
+            visibility: hidden; /* Hidden initially */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        /* Show cursor only after Enter is clicked */
+        #cursor-cross.show {
+            opacity: 1;
+            visibility: visible;
         }
         .wiki-lightbox-overlay.visible ~ #cursor-cross {
             z-index: 10003 !important; /* Cursor above lightbox when it's open */
@@ -254,12 +360,16 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
         }
         
         #music-player:hover {
             background: transparent;
-            transform: scale(1.1);
+            transform: scale(1.2); /* Max hover scale */
+            opacity: 1 !important; /* Prevent any opacity changes on hover */
+        }
+        #music-player:hover #music-icon svg {
+            stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
         }
         
         #music-icon {
@@ -287,7 +397,7 @@
         #fullscreen-button {
             position: fixed;
             top: 50px;
-            right: 120px; /* Adjusted to maintain spacing from new music player position */
+            right: 130px; /* Increased spacing from music player */
             width: 60px;
             height: 60px;
             background: transparent;
@@ -297,12 +407,13 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
         }
         
         #fullscreen-button:hover {
             background: transparent;
-            transform: scale(1.1);
+            transform: scale(1.2); /* Max hover scale */
+            opacity: 1 !important; /* Prevent any opacity changes on hover */
         }
         
         #fullscreen-icon {
@@ -322,18 +433,40 @@
             transition: stroke 0.3s ease;
         }
         
-        /* Keep fullscreen icon yellow on hover (no color change) */
-        #fullscreen-button:hover #fullscreen-icon svg { stroke: #ffd700; }
+        /* Brighter yellow on hover - same as important words in history page */
+        #fullscreen-button:hover #fullscreen-icon svg { stroke: #ffe866; }
 
         /* UI staged fade-in */
         .ui-fade { opacity: 0; transition: opacity 0.8s ease; }
         .ui-fade.visible { opacity: 1; }
+        
+        /* Hide all UI elements initially - they'll fade in after 3D scene is ready */
+        /* Using opacity: 0 without !important so GSAP can animate it */
+        #tooltip,
+        #music-player,
+        #book-button,
+        #rotate-button,
+        #info-button,
+        #fullscreen-button,
+        #part-container {
+            opacity: 0;
+        }
+        
+        /* After fade-in completes, ensure these stay visible */
+        #music-player.faded-in,
+        #book-button.faded-in,
+        #rotate-button.faded-in,
+        #info-button.faded-in,
+        #fullscreen-button.faded-in,
+        #part-container.faded-in {
+            opacity: 1 !important;
+        }
 
         /* Rotate toggle button */
         #rotate-button {
             position: fixed;
             top: 50px;
-            right: 260px; /* Adjusted to maintain spacing from new music player position */
+            right: 290px; /* Increased spacing */
             width: 60px;
             height: 60px;
             background: transparent;
@@ -343,9 +476,15 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
         }
-        #rotate-button:hover { transform: scale(1.1); }
+        #rotate-button:hover { 
+            transform: scale(1.2); /* Max hover scale */
+            opacity: 1 !important; /* Prevent any opacity changes on hover */
+        }
+        #rotate-button:hover #rotate-icon svg {
+            stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
+        }
         #rotate-icon, #rotate-icon svg { width: 36px; height: 36px; }
         #rotate-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
         #rotate-button.paused #rotate-icon svg { stroke: #ff4444; }
@@ -354,7 +493,7 @@
         #info-button {
             position: fixed;
             top: 50px;
-            right: 190px; /* Adjusted to maintain spacing from new music player position */
+            right: 210px; /* Increased spacing */
             width: 60px;
             height: 60px;
             background: transparent;
@@ -364,9 +503,15 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.3s ease;
+            transition: all 0.15s ease;
         }
-        #info-button:hover { transform: scale(1.1); }
+        #info-button:hover { 
+            transform: scale(1.2); /* Max hover scale */
+            opacity: 1 !important; /* Prevent any opacity changes on hover */
+        }
+        #info-button:hover #info-icon svg {
+            stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
+        }
         #info-icon, #info-icon svg { width: 36px; height: 36px; }
         #info-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
         #info-button.off #info-icon svg { stroke: #ff4444; }
@@ -375,7 +520,7 @@
         #book-button {
             position: fixed;
             top: 50px;
-            right: 330px; /* Position to the left of rotate button (260px) */
+            right: 370px; /* Increased spacing */
             width: 60px;
             height: 60px;
             background: transparent;
@@ -387,7 +532,13 @@
             z-index: 1000;
             transition: all 0.3s ease;
         }
-        #book-button:hover { transform: scale(1.1); }
+        #book-button:hover { 
+            transform: scale(1.2); /* Max hover scale */
+            opacity: 1 !important; /* Prevent any opacity changes on hover */
+        }
+        #book-button:hover #book-icon svg {
+            stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
+        }
         #book-icon, #book-icon svg { width: 36px; height: 36px; }
         #book-icon svg { stroke: #ffd700; stroke-width: 2; fill: none; }
         
@@ -878,8 +1029,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: calc(100% - 1px); /* 1px smaller to prevent pixel leaks */
+            height: calc(100% - 1px); /* 1px smaller to prevent pixel leaks */
             background: #ffd700; /* Solid yellow */
             z-index: 1; /* Behind image */
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
@@ -887,12 +1038,19 @@
             pointer-events: none; /* Don't block clicks on images */
         }
         /* Image should start above placeholder */
-        .porsche-history-image img,
-        .porsche-history-image video {
+        .porsche-history-image img {
             position: relative;
             z-index: 2; /* Above placeholder */
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
             pointer-events: auto; /* Enable clicks on images */
+        }
+        /* Videos should start above placeholder but NOT be clickable */
+        .porsche-history-image video {
+            position: relative;
+            z-index: 2; /* Above placeholder */
+            clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
+            pointer-events: none !important; /* Disable clicks on videos */
+            cursor: default !important; /* No pointer cursor on videos */
         }
         /* Looping interlace effect overlay on images */
         .porsche-history-image::before {
@@ -911,7 +1069,7 @@
                 rgba(0, 0, 0, 0.25) 2px
             );
             pointer-events: none;
-            z-index: 2; /* Above image, below yellow overlay (which is z-index: 1) */
+            z-index: 3; /* Above image (z-index: 2) so interlace is on top */
             animation: interlaceMove 0.1s linear infinite;
         }
         @keyframes interlaceMove {
@@ -941,27 +1099,52 @@
         .porsche-history-image img:hover {
             transform: scale(1.08); /* Scale up slightly on hover */
         }
-        /* Videos in regular images should not be clickable for lightbox */
+        /* Videos in regular images should NOT be clickable */
         .porsche-history-image video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
             max-width: 1200px;
-            pointer-events: none; /* Disable clicks on videos */
-            cursor: none !important; /* Always use custom cursor */
+            pointer-events: none !important; /* Disable clicks on videos */
+            cursor: default !important; /* No pointer cursor on videos */
         }
-        /* Videos in fullwidth images can be clicked to open associated image */
+        /* Specifically block porsche 9000 thumbnail (pfuture-video) */
+        .porsche-history-image video[src*="pfuture-video"],
+        .porsche-history-image video[data-no-lightbox="true"] {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+        /* Block clicks on the wrapper containing porsche 9000 video */
+        .porsche-history-image-wrapper:has(video[src*="pfuture-video"]),
+        .porsche-history-image-wrapper:has(video[data-no-lightbox="true"]) {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+        /* Fallback for browsers that don't support :has() */
+        .porsche-history-image-wrapper .porsche-history-image:has(video[src*="pfuture-video"]),
+        .porsche-history-image-wrapper .porsche-history-image:has(video[data-no-lightbox="true"]) {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+        /* Videos in fullwidth images should NOT be clickable */
         .porsche-history-fullwidth-image video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
-            pointer-events: auto; /* Enable clicks to open associated image in lightbox */
-            cursor: none !important; /* Always use custom cursor */
+            pointer-events: none !important; /* Disable clicks on videos */
+            cursor: default !important; /* No pointer cursor on videos */
+        }
+        /* Specifically block porsche 9000 thumbnail (pfuture-video) in fullwidth too */
+        .porsche-history-fullwidth-image video[src*="pfuture-video"],
+        .porsche-history-fullwidth-image video[data-no-lightbox="true"] {
+            pointer-events: none !important;
+            cursor: default !important;
         }
         .porsche-history-image img {
-            animation: imageFlicker 0.05s linear infinite alternate; /* Fast flicker between 1.0 and 0.98 opacity */
+            /* animation: imageFlicker 0.05s linear infinite alternate; /* DISABLED - Fast flicker between 1.0 and 0.98 opacity */
+            animation: none; /* Flicker effect turned off */
         }
         @keyframes imageFlicker {
             0% {
@@ -1028,15 +1211,34 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: calc(100% - 1px); /* 1px smaller to prevent pixel leaks */
+            height: calc(100% - 1px); /* 1px smaller to prevent pixel leaks */
             background: #ffd700; /* Solid yellow */
             z-index: 1; /* Behind image */
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left */
             opacity: 1; /* Visible initially */
         }
         /* Full-width image should start above placeholder */
-        .porsche-history-fullwidth-image img,
+        .porsche-history-fullwidth-image img {
+            position: relative;
+            z-index: 2; /* Above placeholder */
+            width: 100%;
+            display: block;
+            /* Extra height for parallax - 150% of container height (50% extra for parallax movement) */
+            height: 150%;
+            object-fit: cover;
+            object-position: center center; /* Center the image - expands from center */
+            /* Center the image vertically - position top edge so center of image is at center of container */
+            top: -25%; /* Move up by half of extra height (25% of container = half of 50% extra) to center */
+            transform-origin: center center; /* Ensure transforms happen from center */
+            will-change: transform, clip-path; /* Optimize for parallax animation and clip-path */
+            /* Prevent edge artifacts during parallax */
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            clip-path: inset(0 100% 0 0); /* Start: fully masked from left, so yellow shows through */
+            pointer-events: auto; /* Enable clicks on images */
+        }
+        /* Full-width videos should start above placeholder but NOT be clickable */
         .porsche-history-fullwidth-image video {
             position: relative;
             z-index: 2; /* Above placeholder */
@@ -1054,9 +1256,12 @@
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
             clip-path: inset(0 100% 0 0); /* Start: fully masked from left, so yellow shows through */
+            pointer-events: none !important; /* Disable clicks on videos */
+            cursor: default !important; /* No pointer cursor on videos */
         }
         .porsche-history-fullwidth-image img {
-            animation: imageFlicker 0.05s linear infinite alternate;
+            /* animation: imageFlicker 0.05s linear infinite alternate; /* DISABLED */
+            animation: none; /* Flicker effect turned off */
         }
         /* Caption overlay on full-width parallax image */
         .porsche-history-fullwidth-image-caption {
@@ -1097,7 +1302,7 @@
                 rgba(0, 0, 0, 0.25) 2px
             );
             pointer-events: none;
-            z-index: 0; /* Lower z-index to ensure it stays below sticky header */
+            z-index: 3; /* Above image (z-index: 2) so interlace is on top */
             animation: interlaceMove 0.1s linear infinite;
             /* Ensure proper clipping */
             clip-path: inset(0);
@@ -1524,7 +1729,12 @@
         <div id="part-info"></div>
     </div>
     <div id="cursor-cross" class="ui-fade"></div>
-    <div id="loading-overlay"><div id="loading-text">LOADING CONFIGURATOR</div></div>
+            <div id="loading-overlay">
+            <video id="loading-video" autoplay loop muted playsinline preload="auto">
+                <source src="Media/ferdinand-animated.MP4" type="video/mp4">
+            </video>
+            <button id="enter-button">Enter</button>
+        </div>
     <div id="tooltip" class="ui-fade">
         <div id="tooltip-content">
             <div id="tooltip-part-name"></div>
@@ -1608,7 +1818,7 @@
     </div>
     
     <div id="canvas-container"></div>
-    <!-- Load legacy app + modular layer by default; pass ?legacy=1 to disable modules if needed -->
+    <!-- Preload 3D experience immediately so it's ready when Enter is clicked -->
     <script type="module" src="main.js"></script>
     <script type="module">
         const params = new URLSearchParams(window.location.search);
@@ -1616,6 +1826,498 @@
             import('./src/app.js');
         }
     </script>
+    <!-- Handle Enter button to reveal the preloaded experience -->
+    <script>
+        // Handle Enter button click to start the experience
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const enterButton = document.getElementById('enter-button');
+            const canvasContainer = document.getElementById('canvas-container');
+            const loadingVideo = document.getElementById('loading-video');
+            
+            if (enterButton && loadingOverlay) {
+                // Prevent main.js from hiding the overlay automatically
+                // Override any attempts to hide it until Enter is clicked
+                let enterClicked = false;
+                
+                // Monitor and prevent overlay from being hidden
+                const observer = new MutationObserver(() => {
+                    if (!enterClicked && loadingOverlay) {
+                        // If overlay gets hidden in any way, show it again (unless Enter was clicked)
+                        if (loadingOverlay.classList.contains('hidden') || 
+                            loadingOverlay.style.display === 'none' ||
+                            loadingOverlay.style.visibility === 'hidden' ||
+                            loadingOverlay.style.opacity === '0') {
+                            loadingOverlay.classList.remove('hidden');
+                            loadingOverlay.style.display = 'flex';
+                            loadingOverlay.style.visibility = 'visible';
+                            loadingOverlay.style.opacity = '1';
+                        }
+                    }
+                });
+                
+                observer.observe(loadingOverlay, {
+                    attributes: true,
+                    attributeFilter: ['class', 'style'],
+                    childList: false,
+                    subtree: false
+                });
+                
+                // ABSOLUTE protection - video overlay MUST stay visible until Enter is clicked
+                // Check very frequently and aggressively override ANY attempts to hide it
+                let protectInterval = setInterval(() => {
+                    if (enterClicked) {
+                        clearInterval(protectInterval);
+                        return;
+                    }
+                    
+                    if (loadingOverlay) {
+                        // Check if overlay still exists in DOM
+                        if (!loadingOverlay.parentNode && document.body) {
+                            // Overlay was removed! Add it back immediately
+                            console.warn('Video overlay was removed from DOM! Restoring...');
+                            document.body.appendChild(loadingOverlay);
+                        }
+                        
+                        // Aggressively maintain visibility - override ANY hiding attempts
+                        const computedStyle = window.getComputedStyle(loadingOverlay);
+                        
+                        if (loadingOverlay.style.display === 'none' || 
+                            computedStyle.display === 'none' ||
+                            loadingOverlay.style.visibility === 'hidden' ||
+                            computedStyle.visibility === 'hidden' ||
+                            loadingOverlay.style.opacity === '0' ||
+                            parseFloat(computedStyle.opacity) < 0.5 ||
+                            loadingOverlay.classList.contains('hidden')) {
+                            
+                            loadingOverlay.classList.remove('hidden');
+                            loadingOverlay.style.setProperty('display', 'flex', 'important');
+                            loadingOverlay.style.setProperty('visibility', 'visible', 'important');
+                            loadingOverlay.style.setProperty('opacity', '1', 'important');
+                            loadingOverlay.style.setProperty('z-index', '99999', 'important');
+                            loadingOverlay.style.setProperty('pointer-events', 'auto', 'important');
+                            loadingOverlay.style.setProperty('position', 'fixed', 'important');
+                            loadingOverlay.style.setProperty('top', '0', 'important');
+                            loadingOverlay.style.setProperty('left', '0', 'important');
+                            loadingOverlay.style.setProperty('width', '100%', 'important');
+                            loadingOverlay.style.setProperty('height', '100%', 'important');
+                        }
+                        
+                        // Also ensure canvas container cannot receive pointer events
+                        if (canvasContainer) {
+                            canvasContainer.style.setProperty('pointer-events', 'none', 'important');
+                        }
+                    } else {
+                        // Overlay doesn't exist? Recreate it!
+                        console.error('Video overlay element is missing!');
+                    }
+                }, 20); // Check very frequently - every 20ms
+                
+                // Block ALL mouse/touch events from reaching anything behind the overlay
+                // BUT allow clicks on the Enter button to work
+                const blockAllEvents = (e) => {
+                    // Don't block if clicking on the Enter button
+                    if (enterButton && (e.target === enterButton || enterButton.contains(e.target))) {
+                        return; // Allow Enter button to receive events
+                    }
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                };
+                
+                // Capture ALL events on the overlay (capture phase to catch them first)
+                const eventTypes = ['mousedown', 'mouseup', 'mousemove', 'mouseenter', 'mouseleave', 
+                                   'click', 'dblclick', 'touchstart', 'touchmove', 'touchend',
+                                   'pointerdown', 'pointermove', 'pointerup', 'wheel', 'contextmenu'];
+                
+                eventTypes.forEach(eventType => {
+                    loadingOverlay.addEventListener(eventType, blockAllEvents, true); // true = capture phase
+                    if (eventType !== 'click') { // Don't double-block click in bubble phase (button needs it)
+                        loadingOverlay.addEventListener(eventType, blockAllEvents, false); // false = bubble phase
+                    }
+                });
+                
+                // Also block events on the video element itself (but not button)
+                if (loadingVideo) {
+                    eventTypes.forEach(eventType => {
+                        if (eventType !== 'click') {
+                            loadingVideo.addEventListener(eventType, blockAllEvents, true);
+                            loadingVideo.addEventListener(eventType, blockAllEvents, false);
+                        }
+                    });
+                }
+                
+                // Ensure video starts playing - let native loop attribute handle looping
+                if (loadingVideo) {
+                    loadingVideo.loop = true;
+                    loadingVideo.muted = true;
+                    loadingVideo.playsInline = true;
+                    
+                    // Just start playing - the loop attribute will handle looping natively
+                    loadingVideo.play().catch(err => {
+                        console.log('Video autoplay failed, user interaction required:', err);
+                    });
+                    
+                    // Ensure video keeps playing - prevent it from freezing/pausing
+                    const keepVideoPlaying = setInterval(() => {
+                        if (enterClicked) {
+                            clearInterval(keepVideoPlaying);
+                            return;
+                        }
+                        if (loadingVideo && loadingVideo.paused && !loadingVideo.ended) {
+                            loadingVideo.play().catch(() => {}); // Ignore errors
+                        }
+                    }, 100); // Check every 100ms
+                }
+                
+                // Aggressively block canvas/3D scene interactions
+                const blockCanvasInteractions = () => {
+                    if (enterClicked) {
+                        // After Enter is clicked, stop blocking
+                        return;
+                    }
+                    
+                    // Find all canvas elements and block them
+                    const canvases = document.querySelectorAll('canvas');
+                    canvases.forEach(canvas => {
+                        canvas.style.setProperty('pointer-events', 'none', 'important');
+                        canvas.style.setProperty('user-select', 'none', 'important');
+                        canvas.classList.remove('ready'); // Remove ready class
+                    });
+                    
+                    // Also block the canvas container
+                    if (canvasContainer) {
+                        canvasContainer.style.setProperty('pointer-events', 'none', 'important');
+                    }
+                };
+                
+                // Block canvas interactions immediately and continuously
+                blockCanvasInteractions();
+                let canvasBlockerInterval = setInterval(() => {
+                    if (enterClicked) {
+                        clearInterval(canvasBlockerInterval);
+                        // DON'T enable canvas interactions here - wait until scene fade-in/camera zoom completes
+                        // Interactions will be enabled in the scene fade-in onComplete callback
+                        return;
+                    }
+                    blockCanvasInteractions();
+                }, 50);
+                
+                enterButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    enterClicked = true;
+                    observer.disconnect(); // Stop preventing hide after Enter is clicked
+                    clearInterval(protectInterval);
+                    if (typeof canvasBlockerInterval !== 'undefined') {
+                        clearInterval(canvasBlockerInterval);
+                    }
+                    
+                    // Show the custom cursor now that Enter is clicked
+                    const cursorCross = document.getElementById('cursor-cross');
+                    if (cursorCross) {
+                        cursorCross.classList.add('show');
+                    }
+                    
+                    // Use GSAP to animate clip-path with smooth easing
+                    function animateReveal() {
+                        // Wait for GSAP to be fully loaded
+                        const checkGSAP = setInterval(() => {
+                            const gsapLib = window.gsap || (typeof window !== 'undefined' && window.gsap);
+                            
+                            if (gsapLib) {
+                                clearInterval(checkGSAP);
+                                
+                                // Ensure overlay is visible before animating
+                                loadingOverlay.classList.remove('hidden');
+                                loadingOverlay.style.display = 'flex';
+                                loadingOverlay.style.visibility = 'visible';
+                                loadingOverlay.style.opacity = '1';
+                                loadingOverlay.style.clipPath = 'inset(0% 0% 0% 0%)';
+                                loadingOverlay.style.pointerEvents = 'auto'; // Block interactions behind
+                                
+                                console.log('Starting clip-path animation (top to bottom reveal)');
+                                
+                                // IMMEDIATELY hide the Porsche logo (uiCogMesh) if it exists, to prevent flash
+                                // Check for it right away and continuously until found
+                                let logoHidden = false;
+                                const hideLogoEarly = setInterval(() => {
+                                    // Hide 3D logo (uiCogMesh)
+                                    if (window.uiCogMesh && window.uiCogMesh.material && !logoHidden) {
+                                        window.uiCogMesh.material.opacity = 0;
+                                        window.uiCogMesh.material.transparent = true;
+                                        window.uiCogMesh.material.needsUpdate = true;
+                                        logoHidden = true;
+                                        console.log('Porsche logo (uiCogMesh) hidden early (preventing flash)');
+                                    }
+                                    
+                                    // Also hide SVG logos immediately
+                                    const svgLogos = document.querySelectorAll('svg[class*="logo"], svg[id*="logo"], .porsche-logo svg, #porsche-logo svg');
+                                    svgLogos.forEach(svg => {
+                                        svg.style.opacity = '0';
+                                    });
+                                    
+                                    // If we've hidden the 3D logo and found no more SVG logos, we can stop checking
+                                    if (logoHidden && svgLogos.length === 0) {
+                                        clearInterval(hideLogoEarly);
+                                    }
+                                }, 50);
+                                
+                                // Stop checking after 5 seconds (in case it never loads)
+                                setTimeout(() => {
+                                    clearInterval(hideLogoEarly);
+                                }, 5000);
+                                
+                                // Store default camera position for zoom-in animation
+                                // Default position from main.js: camera.position.set(.3825*maxDim,.3078*maxDim,.3825*maxDim)
+                                // We need to get the current camera position from main.js
+                                let defaultCameraPos = null;
+                                let defaultControlsTarget = null;
+                                
+                                // Try to access camera and controls from main.js
+                                const waitForCamera = setInterval(() => {
+                                    if (window.camera && window.controls) {
+                                        clearInterval(waitForCamera);
+                                        // Store the default positions
+                                        defaultCameraPos = window.camera.position.clone();
+                                        defaultControlsTarget = window.controls.target.clone();
+                                        
+                                        // Calculate a position further away (1.8x distance for nice intro)
+                                        const distance = defaultCameraPos.length();
+                                        const direction = defaultCameraPos.clone().normalize();
+                                        const startDistance = distance * 1.8;
+                                        const startPos = direction.multiplyScalar(startDistance);
+                                        
+                                        // Set camera to start position (further away)
+                                        window.camera.position.copy(startPos);
+                                        window.camera.updateProjectionMatrix();
+                                        
+                                        console.log('Camera set to start position (further away)');
+                                        
+                                        // NOW start the camera zoom-in animation (once we have defaultCameraPos)
+                                        const camPos = { x: window.camera.position.x, y: window.camera.position.y, z: window.camera.position.z };
+                                        gsapLib.to(camPos, {
+                                            x: defaultCameraPos.x,
+                                            y: defaultCameraPos.y,
+                                            z: defaultCameraPos.z,
+                                            duration: 3,
+                                            ease: 'power2.inOut',
+                                            onUpdate: function() {
+                                                if (window.camera) {
+                                                    window.camera.position.set(camPos.x, camPos.y, camPos.z);
+                                                    window.camera.updateProjectionMatrix();
+                                                }
+                                            },
+                                            onStart: function() {
+                                                console.log('Camera zoom-in started (3s zoom to default position)');
+                                            }
+                                        });
+                                    }
+                                }, 50);
+                                
+                                // Start fading in the 3D scene from black (3 second fade)
+                                if (canvasContainer) {
+                                    canvasContainer.style.opacity = '0'; // Start at black
+                                    canvasContainer.style.visibility = 'visible'; // Make it visible but transparent
+                                    gsapLib.to(canvasContainer, {
+                                        opacity: 1,
+                                        duration: 3,
+                                        ease: 'power2.inOut',
+                                        onStart: function() {
+                                            console.log('3D scene fade-in started (3s fade from black)');
+                                        },
+                                        onComplete: function() {
+                                            console.log('3D scene fade-in completed');
+                                            
+                                            // Scene is now fully visible - enable canvas interactions (camera zoom should also be complete)
+                                            console.log('Enabling canvas interactions - scene is now active');
+                                            if (canvasContainer) {
+                                                canvasContainer.classList.add('loaded');
+                                                canvasContainer.style.visibility = 'visible';
+                                                // Enable all canvas elements for interactions
+                                                const canvases = document.querySelectorAll('canvas');
+                                                canvases.forEach(canvas => {
+                                                    canvas.classList.add('ready');
+                                                    canvas.style.setProperty('pointer-events', 'auto', 'important');
+                                                });
+                                                canvasContainer.style.setProperty('pointer-events', 'auto', 'important');
+                                            }
+                                            
+                                            // Now fade in all UI elements (3 second fade)
+                                            const uiElements = [
+                                                document.getElementById('tooltip'),
+                                                document.getElementById('music-player'),
+                                                document.getElementById('book-button'),
+                                                document.getElementById('rotate-button'),
+                                                document.getElementById('info-button'),
+                                                document.getElementById('fullscreen-button'),
+                                                document.getElementById('part-container')
+                                            ];
+                                            
+                                            // Also check for Porsche logotype (uiCogMesh if it's a 3D object rendered as 2D)
+                                            // For now, we'll fade in the 2D UI elements
+                                            
+                                            uiElements.forEach(element => {
+                                                if (element) {
+                                                    // Skip tooltip - it's controlled by main.js and should remain hidden until hover
+                                                    if (element.id === 'tooltip') {
+                                                        return;
+                                                    }
+                                                    
+                                                    // Disable CSS transitions temporarily so GSAP can control the animation
+                                                    const originalTransition = element.style.transition;
+                                                    element.style.transition = 'none';
+                                                    
+                                                    // Fade in over 3 seconds using GSAP
+                                                    gsapLib.to(element, {
+                                                        opacity: 1,
+                                                        duration: 3,
+                                                        ease: 'power2.inOut',
+                                                        onStart: function() {
+                                                            console.log('UI fade-in started for:', element.id);
+                                                        },
+                                                        onComplete: function() {
+                                                            // Restore original transition behavior for hover effects
+                                                            element.style.transition = originalTransition || '';
+                                                            // Remove any inline opacity so CSS can control it via the faded-in class
+                                                            element.style.opacity = '';
+                                                            // Add faded-in class to ensure element stays visible (CSS uses !important)
+                                                            element.classList.add('faded-in');
+                                                            console.log('UI fade-in completed for:', element.id);
+                                                            // Leave the element alone - let it work normally with hover effects
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                            
+                                            // Also handle uiCogMesh if it exists (Porsche logotype)
+                                            // This is a 3D object, so we'll need to check if window.uiCogMesh exists
+                                            // and fade it in via its material opacity
+                                            // Also check for SVG logo elements
+                                            const checkLogo = setInterval(() => {
+                                                // Try to find uiCogMesh (it should already be at opacity 0 from the early check)
+                                                if (window.uiCogMesh && window.uiCogMesh.material) {
+                                                    clearInterval(checkLogo);
+                                                    // Ensure it's still invisible and transparent (should already be set, but make sure)
+                                                    if (window.uiCogMesh.material.opacity !== 0) {
+                                                        window.uiCogMesh.material.opacity = 0;
+                                                    }
+                                                    window.uiCogMesh.material.transparent = true;
+                                                    window.uiCogMesh.material.needsUpdate = true;
+                                                    // Fade it in
+                                                    gsapLib.to(window.uiCogMesh.material, {
+                                                        opacity: 1,
+                                                        duration: 3,
+                                                        ease: 'power2.inOut',
+                                                        onStart: function() {
+                                                            console.log('Porsche logo (uiCogMesh) fade-in started');
+                                                        }
+                                                    });
+                                                }
+                                                
+                                                // Also check for any SVG elements that might be the logo
+                                                const svgLogos = document.querySelectorAll('svg[class*="logo"], svg[id*="logo"], .porsche-logo svg, #porsche-logo svg');
+                                                svgLogos.forEach(svg => {
+                                                    // Hide SVG logos immediately if they're not already hidden
+                                                    if (window.getComputedStyle(svg).opacity !== '0') {
+                                                        svg.style.opacity = '0';
+                                                    }
+                                                    gsapLib.to(svg, {
+                                                        opacity: 1,
+                                                        duration: 3,
+                                                        ease: 'power2.inOut'
+                                                    });
+                                                });
+                                                
+                                                if (svgLogos.length > 0) {
+                                                    clearInterval(checkLogo);
+                                                }
+                                            }, 100);
+                                            
+                                            // Stop checking after 5 seconds
+                                            setTimeout(() => {
+                                                clearInterval(checkLogo);
+                                            }, 5000);
+                                            
+                                            console.log('UI fade-in initiated (3s fade)');
+                                        }
+                                    });
+                                }
+                                
+                                // Animate clip-path from top to bottom (simple reveal)
+                                // Start: inset(0% 0% 0% 0%) = fully visible
+                                // End: inset(100% 0% 0% 0%) = fully hidden (revealed from top)
+                                const startValue = 0;
+                                
+                                gsapLib.to({ value: startValue }, {
+                                    value: 100,
+                                    duration: 1.5,
+                                    ease: 'power2.inOut',
+                                    onUpdate: function() {
+                                        const top = this.targets()[0].value;
+                                        const clipPath = `inset(${top}% 0% 0% 0%)`;
+                                        loadingOverlay.style.clipPath = clipPath;
+                                        // Force repaint
+                                        loadingOverlay.offsetHeight;
+                                    },
+                                    onStart: function() {
+                                        console.log('Clip-path animation started (revealing from top to bottom)');
+                                    },
+                                    onComplete: () => {
+                                        console.log('Clip-path animation completed');
+                                        // DON'T enable canvas interactions here - wait until scene fade-in/camera zoom completes
+                                        // Clean up after animation
+                                        if (loadingVideo) {
+                                            loadingVideo.pause();
+                                            loadingVideo.src = '';
+                                        }
+                                        loadingOverlay.classList.add('hidden');
+                                        loadingOverlay.style.display = 'none';
+                                        loadingOverlay.style.pointerEvents = 'none';
+                                    }
+                                });
+                            }
+                        }, 50);
+                        
+                        // Timeout after 2 seconds if GSAP never loads
+                        setTimeout(() => {
+                            clearInterval(checkGSAP);
+                            if (!loadingOverlay.classList.contains('hidden')) {
+                                console.warn('GSAP not available, using fallback');
+                                // Fallback: simple top-to-bottom reveal
+                                loadingOverlay.style.transition = 'clip-path 1.5s ease-in-out';
+                                loadingOverlay.style.clipPath = 'inset(100% 0% 0% 0%)';
+                                setTimeout(() => {
+                                    if (canvasContainer) {
+                                        canvasContainer.classList.add('loaded');
+                                        // Enable all canvas elements
+                                        const canvases = document.querySelectorAll('canvas');
+                                        canvases.forEach(canvas => {
+                                            canvas.classList.add('ready');
+                                            canvas.style.setProperty('pointer-events', 'auto', 'important');
+                                        });
+                                    }
+                                    loadingOverlay.classList.add('hidden');
+                                    if (loadingVideo) {
+                                        loadingVideo.pause();
+                                        loadingVideo.src = '';
+                                    }
+                                }, 1500);
+                            }
+                        }, 2000);
+                    }
+                    
+                    animateReveal();
+                    
+                    // Canvas interactions will be enabled after animation completes
+                    // (set in the GSAP onComplete callback)
+                });
+            }
+        });
+    </script>
+    <!-- main.js and src/app.js preload immediately, but are revealed when Enter is clicked -->
     <script>
         // Mobile detection - DISABLED (mobile message turned off completely)
         function isMobileDevice() {
