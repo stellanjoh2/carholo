@@ -1607,12 +1607,11 @@
     </div>
     
     <div id="canvas-container"></div>
-    <!-- Always load legacy app to keep full experience working -->
+    <!-- Load legacy app + modular layer by default; pass ?legacy=1 to disable modules if needed -->
     <script type="module" src="main.js"></script>
-    <!-- Optionally augment with modular code when ?mod=1 is present -->
     <script type="module">
         const params = new URLSearchParams(window.location.search);
-        if (params.get('mod') === '1') {
+        if (params.get('legacy') !== '1') {
             import('./src/app.js');
         }
     </script>
