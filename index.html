@@ -88,6 +88,26 @@
             pointer-events: auto; /* Block all interactions behind the video */
         }
         
+        /* Interlace overlay above the video, below the Enter button */
+        #loading-overlay::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 99998; /* below the button (100000), above the video */
+            /* subtle scanline pattern */
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.035) 0px,
+                rgba(255,255,255,0.035) 1px,
+                rgba(0,0,0,0.035) 1px,
+                rgba(0,0,0,0.035) 2px
+            );
+            mix-blend-mode: overlay;
+            opacity: 0.7;
+            clip-path: inherit; /* match the reveal animation */
+        }
+        
         #loading-overlay.hidden {
             clip-path: inset(100% 0% 0% 0%);
             pointer-events: none;
@@ -99,6 +119,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            z-index: 1;
         }
         
         #enter-button {
