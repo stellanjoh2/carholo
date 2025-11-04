@@ -89,23 +89,7 @@
         }
         
         /* Interlace overlay above the video, below the Enter button */
-        #loading-overlay::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 3; /* above video (1), below button */
-            /* subtle scanline pattern */
-            background: repeating-linear-gradient(
-                to bottom,
-                rgba(255,255,255,0.12) 0px,
-                rgba(255,255,255,0.12) 1px,
-                rgba(0,0,0,0.12) 1px,
-                rgba(0,0,0,0.12) 2px
-            );
-            opacity: 1;
-            clip-path: inherit; /* match the reveal animation */
-        }
+        #loading-overlay::before { content: ""; display: none; }
         
         #loading-overlay.hidden {
             clip-path: inset(100% 0% 0% 0%);
