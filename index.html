@@ -364,7 +364,7 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.15s ease;
+            transition: transform 0.15s ease; /* never animate opacity */
         }
         
         #music-player:hover {
@@ -376,12 +376,18 @@
             stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
         }
         
+        /* Lock opacity during any state changes */
+        #music-player:focus,
+        #music-player:active,
+        #music-player:focus-visible { opacity: 1 !important; }
+        
         #music-icon {
             width: 36px;
             height: 36px;
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: stroke 0.15s ease; /* faster color response */
         }
         
         #music-icon svg {
@@ -390,7 +396,6 @@
             stroke: #ffd700; /* Default yellow (not playing) */
             stroke-width: 2;
             fill: none;
-            transition: stroke 0.3s ease;
         }
         
         #music-player.playing #music-icon svg {
@@ -411,7 +416,7 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.15s ease;
+            transition: transform 0.15s ease;
         }
         
         #fullscreen-button:hover {
@@ -419,6 +424,9 @@
             transform: scale(1.2); /* Max hover scale */
             opacity: 1 !important; /* Prevent any opacity changes on hover */
         }
+        #fullscreen-button:focus,
+        #fullscreen-button:active,
+        #fullscreen-button:focus-visible { opacity: 1 !important; }
         
         #fullscreen-icon {
             width: 36px;
@@ -434,7 +442,6 @@
             stroke: #ffd700; /* Default yellow */
             stroke-width: 2;
             fill: none;
-            transition: stroke 0.3s ease;
         }
         
         /* Brighter yellow on hover - same as important words in history page */
@@ -480,12 +487,15 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.15s ease;
+            transition: transform 0.15s ease;
         }
         #rotate-button:hover { 
             transform: scale(1.2); /* Max hover scale */
             opacity: 1 !important; /* Prevent any opacity changes on hover */
         }
+        #rotate-button:focus,
+        #rotate-button:active,
+        #rotate-button:focus-visible { opacity: 1 !important; }
         #rotate-button:hover #rotate-icon svg {
             stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
         }
@@ -507,12 +517,15 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.15s ease;
+            transition: transform 0.15s ease;
         }
         #info-button:hover { 
             transform: scale(1.2); /* Max hover scale */
             opacity: 1 !important; /* Prevent any opacity changes on hover */
         }
+        #info-button:focus,
+        #info-button:active,
+        #info-button:focus-visible { opacity: 1 !important; }
         #info-button:hover #info-icon svg {
             stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
         }
@@ -534,12 +547,15 @@
             align-items: center;
             cursor: none !important; /* Always use custom cursor */
             z-index: 1000;
-            transition: all 0.3s ease;
+            transition: transform 0.15s ease;
         }
         #book-button:hover { 
             transform: scale(1.2); /* Max hover scale */
             opacity: 1 !important; /* Prevent any opacity changes on hover */
         }
+        #book-button:focus,
+        #book-button:active,
+        #book-button:focus-visible { opacity: 1 !important; }
         #book-button:hover #book-icon svg {
             stroke: #ffe866; /* Brighter yellow on hover - same as important words in history page */
         }
