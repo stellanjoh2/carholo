@@ -7,7 +7,7 @@ A lightweight Three.js experience showcasing a Porsche model with tasteful post�
 
 ## Features
 - 3D car scene with controlled camera intro zoom and fade‑in.
-- Spinning Porsche 3D logo UI element that stays visible during popups.
+- History page with timeline-style content and emphasized key terms.
 - Post‑processing stack (vignette, bloom, etc.) with tuned parameters.
 - Clean intro flow with video preface (simple overlay reveal).
 - Top navigation with hover scaling, brighter hover color, and reliable visibility.
