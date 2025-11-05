@@ -1752,7 +1752,7 @@
     <div id="cursor-cross" class="ui-fade"></div>
             <div id="loading-overlay">
 
-            <video id="loading-video" autoplay loop muted playsinline preload="auto">
+            <video id="loading-video" autoplay loop muted playsinline preload="metadata" poster="Media/782-hdri-skies-com/hdri_sky_782.jpg">
                 <source src="Media/herointro.mp4" type="video/mp4">
             </video>
             <button id="enter-button">Enter</button>
@@ -1841,7 +1841,7 @@
     
     <div id="canvas-container"></div>
     <!-- Preload 3D experience immediately so it's ready when Enter is clicked -->
-    <script type="module" src="main.js"></script>
+    <script type="module" src="main.min.js"></script>
     <script type="module">
         const params = new URLSearchParams(window.location.search);
         if (params.get('legacy') !== '1') {
@@ -2367,6 +2367,16 @@
             });
         }
     </script>
+
+<script>
+  document.addEventListener('visibilitychange', function() {
+    if (window.gsap && gsap.globalTimeline) {
+      if (document.hidden) { gsap.globalTimeline.pause(); }
+      else { gsap.globalTimeline.resume(); }
+    }
+  });
+</script>
+
 </body>
 </html>
 

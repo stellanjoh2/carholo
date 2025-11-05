@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "terser": "^5.44.0"
+  },
+  "scripts": {
+    "build": "./node_modules/.bin/terser main.js -o main.min.js --compress --mangle"
   }
 }
