@@ -41,7 +41,7 @@ function injectStyles() {
   position: fixed;
   top: 72px;
   right: 18px;
-  width: min(340px, calc(100vw - 36px));
+  width: min(400px, calc(100vw - 36px));
   max-height: calc(100vh - 96px);
   overflow: auto;
   z-index: 10050;
@@ -167,14 +167,15 @@ function injectStyles() {
 }
 #art-dir-panel .art-dir-tab {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: 1px solid rgba(255, 215, 0, 0.35);
   color: ${GOLD};
   font-family: inherit;
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-size: 9px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 7px 6px;
+  padding: 7px 4px;
   cursor: pointer;
   opacity: 0.65;
 }
@@ -183,6 +184,10 @@ function injectStyles() {
   background: rgba(255, 215, 0, 0.15);
   border-color: ${GOLD};
   opacity: 1;
+}
+#art-dir-panel button.art-dir-btn.active {
+  background: ${GOLD};
+  color: #000;
 }
 #art-dir-panel .art-dir-tab-panel { display: none; }
 #art-dir-panel .art-dir-tab-panel.active { display: block; }
@@ -281,10 +286,14 @@ function ensureHudColorStyles() {
 #part-menu-container,
 #part-menu-overlay #part-menu-container,
 .part-menu-option:not(.warning-option),
-#out-of-funds-container,
-#porsche-history-container {
+#out-of-funds-container {
   border-color: var(--hud-color) !important;
   box-shadow: 0 0 40px rgba(var(--hud-r), var(--hud-g), var(--hud-b), 0.3) !important;
+}
+/* History is an editorial page — no modal window chrome from HUD theming */
+#porsche-history-container {
+  border: none !important;
+  box-shadow: none !important;
 }
 .part-menu-option:not(.warning-option) .part-menu-option-title,
 .part-menu-option:not(.warning-option) .part-menu-option-desc,
@@ -396,7 +405,8 @@ function ensureHudColorStyles() {
   border-color: var(--hud-color) !important;
   color: var(--hud-color) !important;
 }
-#art-dir-panel button.art-dir-btn:hover {
+#art-dir-panel button.art-dir-btn:hover,
+#art-dir-panel button.art-dir-btn.active {
   background: var(--hud-color) !important;
   color: #000 !important;
 }
@@ -690,14 +700,15 @@ function buildPanel(art) {
 
     const panel = el('div', { id: 'art-dir-panel' }, [
         el('h2', { text: 'Art Direction' }),
-        el('div', { className: 'art-dir-hint', text: 'H panel · L rotate (Fast/Slow/Off) · Esc close' }),
+        el('div', { className: 'art-dir-hint', text: 'H panel · Space orbit · L rotate · Esc close' }),
     ]);
 
     const tabBar = el('div', { className: 'art-dir-tabs' });
     const tabBodies = {};
     const tabs = [
         { id: 'mesh', label: 'Mesh' },
-        { id: 'post', label: 'Post process' },
+        { id: 'lights', label: 'Lights' },
+        { id: 'post', label: 'Post' },
         { id: 'camera', label: 'Camera' },
         { id: 'export', label: 'Export' },
     ];
@@ -729,6 +740,7 @@ function buildPanel(art) {
     for (const t of tabs) panel.appendChild(tabBodies[t.id]);
 
     const meshTab = tabBodies.mesh;
+    const lightsTab = tabBodies.lights;
     const postTab = tabBodies.post;
     const cameraTab = tabBodies.camera;
     const exportTab = tabBodies.export;
@@ -834,7 +846,7 @@ function buildPanel(art) {
         format: (v) => `${Number(v).toFixed(1)} px`,
     }));
 
-    const lights = section(meshTab, 'Lights');
+    const lights = section(lightsTab, 'Lights');
     syncers.push(addSelect(lights, {
         label: 'Shadow quality',
         options: [
@@ -979,7 +991,7 @@ function buildPanel(art) {
     }));
 
     const gimbal = section(cameraTab, 'Gimbal');
-    syncers.push(addSelect(gimbal, {
+    const gimbalSync = addSelect(gimbal, {
         label: 'Orbit',
         options: [
             { value: 'off', label: 'Off' },
@@ -988,10 +1000,18 @@ function buildPanel(art) {
         ],
         get: () => normalizeGimbalMode(art.gimbalMode),
         set: (v) => setGimbalMode(art, v),
-    }));
+    });
+    syncers.push(gimbalSync);
+    art.cycleGimbalOrbit = () => {
+        const order = ['off', 'slow', 'fast'];
+        const cur = normalizeGimbalMode(art.gimbalMode);
+        const next = order[(order.indexOf(cur) + 1) % order.length];
+        setGimbalMode(art, next);
+        gimbalSync();
+    };
     gimbal.appendChild(el('div', {
         className: 'art-dir-hint',
-        text: 'Auto-orbit around look target · baked into ProRes',
+        text: 'Space cycles Off → Slow → Fast · baked into ProRes',
     }));
 
     // --- Export ---
@@ -1059,7 +1079,7 @@ function buildPanel(art) {
     }));
 
     // --- Clip (offline PNG frames → ProRes 4444 MOV) ---
-    const clipState = { scale: 1, busy: false };
+    const clipState = { scale: 1, busy: false, orbit180: false };
     const clip = section(exportTab, 'Clip');
     const clipHint = el('div', {
         className: 'art-dir-hint',
@@ -1085,6 +1105,21 @@ function buildPanel(art) {
     };
     refreshExportSizeHint();
     window.addEventListener('resize', refreshExportSizeHint);
+
+    const orbit180Btn = el('button', {
+        className: 'art-dir-btn',
+        text: '180',
+        type: 'button',
+    });
+    const syncOrbit180Btn = () => {
+        orbit180Btn.classList.toggle('active', !!clipState.orbit180);
+    };
+    orbit180Btn.addEventListener('click', () => {
+        clipState.orbit180 = !clipState.orbit180;
+        syncOrbit180Btn();
+    });
+    syncOrbit180Btn();
+
     const clipBtn = el('button', {
         className: 'art-dir-btn',
         text: 'Render ProRes',
@@ -1094,11 +1129,13 @@ function buildPanel(art) {
         if (clipBtn.disabled || clipState.busy) return;
         clipState.busy = true;
         clipBtn.disabled = true;
+        orbit180Btn.disabled = true;
         const prev = clipBtn.textContent;
         clipBtn.textContent = 'Starting…';
         try {
             const result = await renderClipToProRes(art, {
                 scale: clipState.scale,
+                orbit180: clipState.orbit180,
                 onProgress: (msg) => { clipBtn.textContent = msg; },
             });
             clipBtn.textContent = `${result.frames}f · ${result.width}×${result.height}`;
@@ -1110,12 +1147,13 @@ function buildPanel(art) {
         } finally {
             clipState.busy = false;
             clipBtn.disabled = false;
+            orbit180Btn.disabled = false;
         }
     });
-    clip.appendChild(el('div', { className: 'art-dir-actions' }, [clipBtn]));
+    clip.appendChild(el('div', { className: 'art-dir-actions' }, [orbit180Btn, clipBtn]));
     clip.appendChild(el('div', {
         className: 'art-dir-hint',
-        text: 'Offline frame bake · car rotation not reset',
+        text: '180 · half-circle orbit · else uses live auto-orbit if on',
     }));
 
     const copyBtn = el('button', {
@@ -1240,6 +1278,13 @@ export function initDevTools() {
         if (event.key.toLowerCase() === 'h' && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault();
             toggle();
+            return;
+        }
+        // Orbit camera: Space cycles Off → Slow → Fast
+        if (event.code === 'Space' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            const art = artRef || window.__artDir;
+            art?.cycleGimbalOrbit?.();
             return;
         }
         // JPG 2× still — modifier+E so hover highlight stays while capturing

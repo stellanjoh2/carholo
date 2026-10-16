@@ -12,6 +12,8 @@ import {
     GIMBAL_SPEEDS,
     applyCameraTilt,
     applyGimbalPose,
+    applyHalfCirclePose,
+    captureOrbitBase,
     isGimbalActive,
     normalizeGimbalMode,
     setGimbalMode,
@@ -72,7 +74,7 @@ function advanceWheels(steps) {
  * then bake ProRes 4444 (ap4h) MOV — same stack as Ultrapilled.
  *
  * @param {object} art — window.__artDir
- * @param {{ scale?: 1|2, fps?: number, durationSec?: number, filename?: string, onProgress?: (msg: string) => void, shouldStop?: () => boolean }} [opts]
+ * @param {{ scale?: 1|2, fps?: number, durationSec?: number, filename?: string, orbit180?: boolean, onProgress?: (msg: string) => void, shouldStop?: () => boolean }} [opts]
  */
 export async function renderClipToProRes(art, opts = {}) {
     const { renderer, composer, grain } = art || {};
@@ -82,6 +84,7 @@ export async function renderClipToProRes(art, opts = {}) {
     const durationSec = opts.durationSec || CLIP_DURATION_SEC;
     const frameCount = Math.round(durationSec * fps);
     const scale = opts.scale === 2 ? 2 : 1;
+    const orbit180 = !!opts.orbit180;
     const onProgress = opts.onProgress || (() => {});
     const shouldStop = opts.shouldStop || (() => false);
 
@@ -96,7 +99,9 @@ export async function renderClipToProRes(art, opts = {}) {
     // Convert per-rAF delta (~60Hz) into radians per offline frame.
     const rotPerFrame = wasAutoRotate ? autoSpeed * (LIVE_HZ / fps) : 0;
     const wheelStepsPerFrame = Math.max(1, Math.round(LIVE_HZ / fps));
-    const gimbalOn = isGimbalActive(art);
+    // 180° half-circle replaces live auto-orbit for this bake when enabled.
+    const halfCircleBase = orbit180 ? captureOrbitBase() : null;
+    const gimbalOn = !orbit180 && isGimbalActive(art);
     if (gimbalOn && !art._gimbalBase) {
         // Ensure base spherical exists without resetting speed/time.
         setGimbalMode(art, normalizeGimbalMode(art.gimbalMode));
@@ -174,8 +179,11 @@ export async function renderClipToProRes(art, opts = {}) {
             }
             advanceWheels(wheelStepsPerFrame);
 
-            // Gimbal (Orby auto-orbit) — frame 0 = current pose, then orbit (like wheel spin).
-            if (gimbalOn) {
+            // Camera motion: 180° half-circle, or live gimbal auto-orbit.
+            if (halfCircleBase) {
+                applyHalfCirclePose(halfCircleBase, frameCount <= 1 ? 0 : i / (frameCount - 1));
+                applyCameraTilt(art);
+            } else if (gimbalOn) {
                 art._gimbalTime = gimbalTime0 + i * frameDuration * gimbalSpeed;
                 applyGimbalPose(art);
                 applyCameraTilt(art);
@@ -223,6 +231,11 @@ export async function renderClipToProRes(art, opts = {}) {
         window.autoRotateEnabled = wasAutoRotate;
         // Leave car at clip-end pose when rotation was advancing; otherwise keep start.
         if (car && !wasAutoRotate) car.rotation.y = startRotY;
+        // Half-circle left the camera elsewhere — rebind live gimbal if it was on.
+        if (orbit180 && isGimbalActive(art)) {
+            art._gimbalBase = null;
+            art._gimbalTime = 0;
+        }
         restoreViewport(art, snap);
         if (typeof snap.clearAlpha === 'number' && typeof renderer.setClearAlpha === 'function') {
             renderer.setClearAlpha(snap.clearAlpha);

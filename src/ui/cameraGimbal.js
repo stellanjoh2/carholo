@@ -147,3 +147,27 @@ export function applyCameraTilt(art) {
         window.camera.rotateZ((tilt * Math.PI) / 180);
     }
 }
+
+/** Snapshot current camera spherical pose around controls.target (for clip orbits). */
+export function captureOrbitBase() {
+    return captureGimbalBase();
+}
+
+/**
+ * Sweep a flat half-circle (π rad) around the look target.
+ * @param {object} base — from captureOrbitBase()
+ * @param {number} progress — 0..1 over the clip
+ */
+export function applyHalfCirclePose(base, progress) {
+    const camera = window.camera;
+    const controls = window.controls;
+    if (!base || !camera || !controls) return false;
+    const t = Math.max(0, Math.min(1, progress));
+    const theta = base.theta + t * Math.PI;
+    const target = base.target || controls.target;
+    const offset = new THREE.Vector3().setFromSphericalCoords(base.radius, base.phi, theta);
+    camera.position.copy(target).add(offset);
+    controls.target.copy(target);
+    camera.lookAt(target);
+    return true;
+}
