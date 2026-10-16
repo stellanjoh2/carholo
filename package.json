@@ -4,5 +4,9 @@
   },
   "scripts": {
     "build": "./node_modules/.bin/terser main.js -o main.min.js --compress --mangle"
+  },
+  "dependencies": {
+    "mediabunny": "^1.61.5",
+    "prores-wasm-encoder": "^1.0.3"
   }
 }

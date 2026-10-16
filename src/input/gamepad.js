@@ -278,8 +278,8 @@ function handleCarRotation(gamepad) {
     
     const lsX = applyDeadzone(gamepad.axes[AXES.LS_X]);
     
-    // Base rotation speed (same as default auto-rotate speed)
-    const baseSpeed = 0.005;
+    // Base rotation speed (matches current auto-rotate speed: Fast 0.005 / Slow 0.0025)
+    const baseSpeed = window.autoRotateSpeed ?? 0.005;
     
     // Only use X axis for rotation (left/right)
     if (Math.abs(lsX) < 0.01) {
@@ -314,7 +314,7 @@ function handleCarRotation(gamepad) {
     // We'll subtract the default rotation and add our custom rotation
     if (window.porscheModel && window.porscheModel.rotation) {
         // Subtract default rotation that main.js will add later in the same frame
-        const defaultRotation = 0.005;
+        const defaultRotation = window.autoRotateSpeed ?? 0.005;
         window.porscheModel.rotation.y -= defaultRotation;
         
         // Apply gamepad-controlled rotation

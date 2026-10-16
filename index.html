@@ -6,7 +6,7 @@
     <title>Porsche 911 Interactive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Pixel&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
     <style>
         * {
@@ -19,7 +19,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             user-select: none; /* Prevent text selection */
             cursor: none; /* hide default cursor */
         }
@@ -115,7 +115,7 @@
             background: rgba(255, 215, 0, 0.1);
             border: 2px solid #ffd700;
             color: #ffd700;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 18px;
             font-weight: 700;
             cursor: pointer !important;
@@ -276,7 +276,7 @@
         #tooltip-content {
             background: rgba(0, 0, 0, 0.7); /* 10% lower opacity (0.8 → 0.7) */
             color: #ffd700; /* Yellow text */
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 14px;
             font-weight: 100;
             padding: 8px 12px;
@@ -289,7 +289,7 @@
         
         #tooltip-part-name {
             font-weight: 700; /* Bold */
-            margin-bottom: 2px;
+            margin-bottom: 10px; /* ~8px more space before status row */
             font-size: 18px; /* ~13.5pt - increased from 16px (~12pt) */
             color: #ffd700; /* Default yellow */
         }
@@ -301,10 +301,17 @@
         #tooltip-part-name.good {
             color: #44ff44; /* Green for good status */
         }
+
+        #tooltip-status-row {
+            display: flex;
+            align-items: center; /* Vertically center icon with status text */
+            gap: 6px;
+        }
         
         #tooltip-status {
             font-size: 14px; /* Same size as part name */
             opacity: 1.0; /* Full opacity for status text */
+            line-height: 1.2;
         }
         
         #tooltip-status.warning {
@@ -320,19 +327,19 @@
             animation: none; /* Disable CSS animation, use JavaScript instead */
         }
         
-        /* Tooltip icon styling */
+        /* Tooltip icon styling — ~20% taller than 14px status text */
         #tooltip-icon {
-            width: 36px;
-            height: 36px;
-            margin-top: 8px;
+            width: 17px;
+            height: 17px;
+            flex-shrink: 0;
             display: flex;
             justify-content: center;
             align-items: center;
         }
         
         #tooltip-icon svg {
-            width: 36px;
-            height: 36px;
+            width: 17px;
+            height: 17px;
             stroke: #ffd700; /* Default yellow */
             stroke-width: 2;
             fill: none;
@@ -602,7 +609,7 @@
         #loading-overlay.hidden { opacity: 0; pointer-events: none; }
         #loading-text {
             color: #ffd700;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 12px; /* half size */
             letter-spacing: 4px;
             opacity: 1;
@@ -649,7 +656,7 @@
             z-index: 1;
             text-align: left;
             letter-spacing: 2px;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-weight: bold;
             margin-bottom: 20px;
             padding-left: 16px; /* Align with divider lines below (same as part-info padding) */
@@ -674,7 +681,7 @@
         #part-info {
             font-size: 16.5px; /* +10% from 15px */
             color: #ffd700;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-weight: 100;
             line-height: 1.5;
             pointer-events: none; /* never block mouse */
@@ -763,7 +770,7 @@
             pointer-events: auto;
         }
         #porsche-history-title {
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 36px; /* Larger headline size */
             font-weight: bold;
             color: #ffd700;
@@ -800,7 +807,7 @@
         }
         #porsche-history-content {
             color: #ffd700;
-            font-family: 'DM Mono', monospace; /* Space Mono Regular */
+            font-family: 'Geist Pixel', monospace; /* Space Mono Regular */
             font-size: 22px; /* 22pt body text */
             font-weight: 300; /* Light weight */
             line-height: 1.5;
@@ -846,7 +853,7 @@
         }
         #porsche-history-content h3 {
             color: #ffd700;
-            font-family: 'DM Mono', monospace; /* Space Mono for headings too */
+            font-family: 'Geist Pixel', monospace; /* Space Mono for headings too */
             font-size: 28px; /* Larger headings */
             font-weight: 700; /* Bold weight */
             margin-top: 40px;
@@ -878,7 +885,7 @@
             border: 1px solid #ffd700; /* Match part menu option border */
             border-radius: 0; /* Match part menu option - no rounded corners */
             color: #ffd700; /* Match part menu option color */
-            font-family: 'DM Mono', monospace; /* Match part menu font */
+            font-family: 'Geist Pixel', monospace; /* Match part menu font */
             font-size: 20px; /* Match part menu option font size */
             font-weight: 400; /* Match part menu option font weight */
             text-align: center; /* Center aligned */
@@ -918,7 +925,7 @@
         }
         .porsche-history-stock-chart-title {
             color: #ffd700;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 17px; /* Increased from 14px */
             font-weight: 400;
             margin-bottom: 16px;
@@ -947,7 +954,7 @@
             display: flex;
             gap: 32px;
             margin-top: 16px;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 12px;
             color: rgba(255, 215, 0, 0.8);
             opacity: 1; /* Always visible - no fade in needed */
@@ -981,7 +988,7 @@
             border: 1px solid #ffd700; /* Match done button border */
             border-radius: 0; /* Match done button - no rounded corners */
             color: #ffd700; /* Match done button color */
-            font-family: 'DM Mono', monospace; /* Match done button font */
+            font-family: 'Geist Pixel', monospace; /* Match done button font */
             font-size: 20px; /* Match done button font size */
             font-weight: 400; /* Match done button font weight */
             text-align: center; /* Center aligned text */
@@ -1014,7 +1021,7 @@
             justify-content: center;
             margin: 30px 0;
             color: #ffd700;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 14px;
             font-weight: 300;
             opacity: 0;
@@ -1191,7 +1198,7 @@
             margin-bottom: 62px; /* Match spacing above image (matches wrapper margin-top) */
             margin-left: 0; /* Align with image left edge - same container */
             width: 100%; /* Full width of wrapper, same as image */
-            font-family: 'DM Mono', monospace; /* Space Mono Regular */
+            font-family: 'Geist Pixel', monospace; /* Space Mono Regular */
             font-size: 14px; /* Same size as full-width image caption */
             font-weight: 400; /* Regular weight */
             color: #ffd700; /* Solid yellow at full opacity */
@@ -1290,7 +1297,7 @@
             bottom: 20px; /* Padding from bottom */
             left: 20px; /* Padding from left */
             max-width: 60%; /* Don't span entire width, leave space */
-            font-family: 'DM Mono', monospace; /* Space Mono Regular */
+            font-family: 'Geist Pixel', monospace; /* Space Mono Regular */
             font-size: 14px; /* Slightly larger than regular captions */
             font-weight: 400; /* Regular weight */
             color: #ffd700; /* Yellow text */
@@ -1462,7 +1469,7 @@
             padding: 0;
             transition: all 0.2s ease;
             z-index: 3; /* Above blurry background and main image */
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-weight: 400;
         }
         .wiki-lightbox-close:hover {
@@ -1487,7 +1494,7 @@
             padding: 0;
             transition: all 0.2s ease;
             z-index: 3; /* Above blurry background and main image */
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-weight: 400;
         }
         .wiki-lightbox-nav:hover {
@@ -1533,7 +1540,7 @@
             border-bottom: none;
         }
         #out-of-funds-title {
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 32px;
             font-weight: 400;
             color: #ff4444;
@@ -1551,7 +1558,7 @@
             border: 1px solid #ff4444;
             border-radius: 0;
             color: #ff4444;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 20px;
             font-weight: 400;
             cursor: none !important; /* Always use custom cursor */
@@ -1614,7 +1621,7 @@
             border-bottom: none; /* Remove fine line between headline and buttons */
         }
         #part-menu-title {
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 34px; /* +10% from 31px (31 * 1.1 = 34.1, rounded to 34) */
             font-weight: bold;
             color: #ffd700;
@@ -1653,7 +1660,7 @@
             border: 1px solid #ffd700; /* Solid yellow with no opacity */
             border-radius: 0; /* No rounded corners */
             cursor: none !important; /* Always use custom cursor */
-            font-family: 'DM Mono', monospace;
+            font-family: 'Geist Pixel', monospace;
             font-size: 20px; /* Increased by ~25% from 16px (16 * 1.25 = 20) */
             color: #ffd700; /* Neutral state - yellow text */
             opacity: 0;
@@ -1760,8 +1767,10 @@
     <div id="tooltip" class="ui-fade">
         <div id="tooltip-content">
             <div id="tooltip-part-name"></div>
-            <div id="tooltip-status"></div>
-            <div id="tooltip-icon"></div>
+            <div id="tooltip-status-row">
+                <div id="tooltip-icon"></div>
+                <div id="tooltip-status"></div>
+            </div>
         </div>
     </div>
     <div id="music-player" class="ui-fade">
@@ -1822,7 +1831,9 @@
     {
         "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+            "mediabunny": "./node_modules/mediabunny/dist/modules/src/index.js",
+            "prores-wasm-encoder/mediabunny": "./node_modules/prores-wasm-encoder/dist/prores-encoder-mediabunny.mjs"
         }
     }
     </script>

@@ -1,6 +1,7 @@
 // App bootstrap (feature-flagged entry). Kept minimal to avoid side-effects.
 import { initLightbox } from './ui/lightbox.js';
 import { initGamepad } from './input/gamepad.js';
+import { initDevTools } from './ui/devTools.js';
 
 function onReady(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, { once: true });
@@ -12,6 +13,7 @@ onReady(() => {
     try {
         initLightbox();
         initGamepad();
+        initDevTools();
         // Future: init history/wiki, chart, and 3D here as we migrate.
     } catch (err) {
         console.error('Module app init failed', err);
